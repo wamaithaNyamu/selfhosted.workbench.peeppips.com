@@ -6,6 +6,26 @@ TODO:
 5. [idea] still do auth from my server so we can keep emails working
 
 
+### Pre requisites
+Create a .env and add the following
+
+```sh
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=workbench
+POSTGRES_USER=workbench
+POSTGRES_PASSWORD=workbench_password # supposed to be a super secret password
+POSTGRES_SSLMODE=disable
+DATABASE_URL=postgres://workbench:workbench_password@postgres:5432/workbench?sslmode=disable
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_ADDR=redis:6379
+SERVER_PORT=8080
+PORT=8080
+
+
+
+```
 ### How to get started:
 Give script necessary permissions
 ```sh
@@ -15,3 +35,4 @@ Run script that does blue green deployment
 ```sh
 ./deploy-workbench.sh
 ```
+

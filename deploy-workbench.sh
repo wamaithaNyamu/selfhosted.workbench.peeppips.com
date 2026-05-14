@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-ENV_FILE="${ENV_FILE:-.env.test}"
+ENV_FILE="${ENV_FILE:-.env}"
 NETWORK_NAME="${NETWORK_NAME:-workbench-net}"
 
 INFRA_COMPOSE="${INFRA_COMPOSE:-docker-compose.infra.yml}"

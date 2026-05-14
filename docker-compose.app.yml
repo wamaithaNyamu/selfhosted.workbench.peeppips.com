@@ -3,7 +3,7 @@ services:
     image: ghcr.io/wamaithanyamu/workbench-backend:sha-b7e6919
     restart: "no"
     env_file:
-      - .env.test
+      - .env
     command: ["./migrate-up"]
     networks:
       - workbench-net
@@ -12,7 +12,7 @@ services:
     image: ghcr.io/wamaithanyamu/workbench-backend:sha-b7e6919
     restart: unless-stopped
     env_file:
-      - .env.test
+      - .env
     dns:
       - 1.1.1.1
       - 8.8.8.8

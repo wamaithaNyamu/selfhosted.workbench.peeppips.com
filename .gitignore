@@ -1,0 +1,4 @@
+.env.*
+.env
+.active_color
+nginx.*

@@ -1,0 +1,44 @@
+services:
+  migrate:
+    image: ghcr.io/wamaithanyamu/workbench-backend:sha-b7e6919
+    restart: "no"
+    env_file:
+      - .env.test
+    command: ["./migrate-up"]
+    networks:
+      - workbench-net
+
+  server:
+    image: ghcr.io/wamaithanyamu/workbench-backend:sha-b7e6919
+    restart: unless-stopped
+    env_file:
+      - .env.test
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    expose:
+      - "8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - workbench-net
+
+  frontend:
+    image: ghcr.io/wamaithanyamu/workbench-frontend:sha-2bdb441
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_PUBLIC_API_URL: /api
+      INTERNAL_API_URL: http://server:8080
+    expose:
+      - "3000"
+    depends_on:
+      - server
+    networks:
+      - workbench-net
+
+networks:
+  workbench-net:
+    external: true

@@ -1,0 +1,18 @@
+# docker-compose.tracing.yml
+
+services:
+  tempo:
+    image: grafana/tempo:2.6.1
+    container_name: workbench-tempo
+    restart: unless-stopped
+    command:
+      - "-config.file=/etc/tempo.yml"
+    volumes:
+      - ./observability/tempo.yml:/etc/tempo.yml
+    ports:
+      - "3200:3200"
+    networks:
+      - workbench-net
+networks:
+  workbench-net:
+    external: true

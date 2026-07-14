@@ -1,0 +1,23 @@
+# docker-compose.otel.yml
+
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: workbench-otel
+    restart: unless-stopped
+
+    command: ["--config=/etc/otel-collector.yml"]
+
+    volumes:
+      - ./observability/otel-collector.yml:/etc/otel-collector.yml
+
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+
+    networks:
+      - workbench-net
+
+networks:
+  workbench-net:
+    external: true

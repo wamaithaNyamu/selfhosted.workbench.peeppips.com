@@ -1,0 +1,57 @@
+# docker-compose.metrics.yml
+
+services:
+  prometheus:
+    image: prom/prometheus
+    container_name: workbench-prometheus
+    user: root
+    restart: unless-stopped
+    
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.enable-remote-write-receiver
+      - --enable-feature=exemplar-storage
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+    ports:
+      - "9091:9090"
+    volumes:
+      - prometheus_data:/prometheus
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - workbench-net
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: workbench-cadvisor
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - "8089:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - ${DOCKER_ROOT:-/var/lib/docker}:${DOCKER_ROOT:-/var/lib/docker}:ro
+    networks:
+      - workbench-net
+
+  node-exporter:
+    image: prom/node-exporter
+    container_name: workbench-node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - '/:/host:ro,rslave'
+    networks:
+      - workbench-net
+
+networks:
+  workbench-net:
+    external: true
+
+volumes:
+  prometheus_data:

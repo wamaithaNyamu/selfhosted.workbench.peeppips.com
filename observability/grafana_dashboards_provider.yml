@@ -1,0 +1,19 @@
+apiVersion: 1
+
+providers:
+  - name: 'Workbench Dashboards'
+    orgId: 1
+    folder: 'Observability'
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards
+
+# 👇 The preferences block belongs right here!
+dashboards:
+  - orgId: 1
+    preferences:
+      homeDashboardUid: "cfo8dv5059gcgd"
+    starred:
+      - "cfo8dv5059gcgd"

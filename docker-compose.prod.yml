@@ -1,0 +1,185 @@
+services:
+  postgres:
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/postgres:${IMAGE_TAG:-staging}
+    restart: unless-stopped
+    command: postgres -c listen_addresses='*' -c max_locks_per_transaction=1024
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-workbench}
+      POSTGRES_USER: ${POSTGRES_USER:-workbench}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-workbench_password}
+    volumes:
+      - workbench_postgres_data:/var/lib/postgresql/data
+    networks:
+      - workbench-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER:-workbench} -d ${POSTGRES_DB:-workbench}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks:
+      - workbench-net
+
+  migrate:
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/migrate:${IMAGE_TAG:-staging}
+    restart: "no"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - workbench-net
+
+  mt5-ingest:
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/mt5-ingest:${IMAGE_TAG:-staging}
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - workbench-net
+
+  deriv-datasource:
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/deriv-datasource:${IMAGE_TAG:-staging}
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - workbench-net
+
+  go-temporal-worker:
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/go-temporal-workers:${IMAGE_TAG:-staging}
+    restart: unless-stopped
+    command: ["/usr/local/bin/worker"]
+    env_file:
+      - .env
+    environment:
+      TEMPORAL_HOST: workbench-temporal
+      TEMPORAL_PORT: 7233
+      TEMPORAL_TASK_QUEUE: go-workers-task-queue
+      MT5_DOCKER_HOST_DATA_ROOT: /home/devuser/backend.workbench.client
+      MT5_DOCKER_HOST_WINE_ROOT: /var/lib/workbench/wine
+      MT5_WORKER_DATA_ROOT: /mt5
+      MT5_WORKER_WINE_ROOT: /wine
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/devuser/backend.workbench.client:/mt5
+      - /var/lib/workbench/wine:/wine
+    networks:
+      - workbench-net
+
+  go-temporal-api-gateway:
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/go-temporal-workers:${IMAGE_TAG:-staging}
+    restart: unless-stopped
+    command: ["/usr/local/bin/api-gateway"]
+    env_file:
+      - .env
+    environment:
+      TEMPORAL_HOST: workbench-temporal
+      TEMPORAL_PORT: 7233
+      TEMPORAL_TASK_QUEUE: go-workers-task-queue
+      TEMPORAL_GATEWAY_PORT: 8110
+    networks:
+      - workbench-net
+
+  python-temporal-worker:
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/python-temporal-workers:${IMAGE_TAG:-staging}
+    restart: unless-stopped
+    command: ["python", "workers/worker.py"]
+    env_file:
+      - .env
+    environment:
+      TEMPORAL_HOST: workbench-temporal
+      TEMPORAL_PORT: 7233
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+    networks:
+      - workbench-net
+
+  python-api-gateway:
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/python-temporal-workers:${IMAGE_TAG:-staging}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      TEMPORAL_HOST: workbench-temporal
+      TEMPORAL_PORT: 7233
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+    networks:
+      - workbench-net
+
+  strategy-runner:
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/strategy-runner:${IMAGE_TAG:-staging}
+    restart: unless-stopped
+    env_file:
+      - .env
+    networks:
+      - workbench-net
+
+  mt5-api:
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/mt5-python-runner:${IMAGE_TAG:-staging}
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - wine_environment:/home/wineuser/.wine
+    environment:
+      MT5_LOGIN: ${MT5_LOGIN}
+      MT5_PASSWORD: ${MT5_PASSWORD}
+      MT5_SERVER: ${MT5_SERVER}
+      MT5_API_PORT: 8000
+    networks:
+      - workbench-net
+
+  server:
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/server:${IMAGE_TAG:-staging}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+      mt5-ingest:
+        condition: service_started
+      deriv-datasource:
+        condition: service_started
+    networks:
+      - workbench-net
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: workbench-cloudflared
+    restart: unless-stopped
+    command: tunnel run
+    env_file:
+      - .env
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    networks:
+      - workbench-net
+
+volumes:
+  workbench_postgres_data:
+  wine_environment:
+
+networks:
+  workbench-net:
+    external: true

@@ -1,0 +1,54 @@
+apiVersion: 1
+
+datasources:
+- name: Prometheus
+  type: prometheus
+  uid: prometheus
+  access: proxy
+  orgId: 1
+  url: http://workbench-prometheus:9090
+  basicAuth: false
+  isDefault: false
+  version: 1
+  editable: true
+  jsonData:
+    httpMethod: GET
+
+- name: Loki
+  type: loki
+  uid: loki
+  access: proxy
+  orgId: 1
+  url: http://workbench-loki:3100
+  basicAuth: false
+  isDefault: false
+  version: 1
+  editable: true
+  jsonData:
+    # This maps trace IDs found in logs automatically back to Tempo
+    derivedFields:
+      - name: "traceID"
+        selectInternalResult: true
+        internalLinkToDataLink: true
+        datasourceUid: "tempo"
+        urlDisplayLabel: "View Trace"
+
+- name: Tempo
+  type: tempo
+  access: proxy
+  orgId: 1
+  url: http://workbench-tempo:3200
+  basicAuth: false
+  isDefault: true
+  version: 1
+  editable: true
+  apiVersion: 1
+  uid: tempo
+  jsonData:
+    httpMethod: GET
+    serviceMap:
+      datasourceUid: prometheus
+    # 👇 Links Tempo directly to Loki for effortless trace-to-log jumping
+    lokiSearch:
+      datasourceUid: loki
+

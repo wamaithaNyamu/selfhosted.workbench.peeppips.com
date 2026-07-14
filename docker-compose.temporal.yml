@@ -1,0 +1,61 @@
+services:
+  temporal:
+    container_name: workbench-temporal
+    image: temporalio/auto-setup:${TEMPORAL_VERSION:-1.27.2}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DB: postgres12
+      DB_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_SEEDS: ${POSTGRES_HOST_SEEDS}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PWD: ${POSTGRES_PASSWORD}
+      DBNAME: ${TEMPORAL_DB}
+      VISIBILITY_DBNAME: ${TEMPORAL_VISIBILITY_DB}
+      DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/development-sql.yaml
+      TEMPORAL_CORS_ORIGINS: ${TEMPORAL_CORS_ORIGINS}      
+      DEFAULT_NAMESPACE: ${TEMPORAL_DEFAULT_NAMESPACE:-default}
+      DEFAULT_NAMESPACE_RETENTION: ${TEMPORAL_DEFAULT_NAMESPACE_RETENTION:-30d}
+    ports:
+      - "7233:7233"
+    volumes:
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
+    networks:
+      - workbench-net
+
+  temporal-admin-tools:
+    container_name: workbench-temporal-admin-tools
+    image: temporalio/admin-tools:${TEMPORAL_ADMINTOOLS_VERSION:-1.27.2}
+    restart: unless-stopped
+    depends_on:
+      - temporal
+    environment:
+      TEMPORAL_ADDRESS: workbench-temporal:7233
+      TEMPORAL_CLI_ADDRESS: workbench-temporal:7233
+      TEMPORAL_CORS_ORIGINS: ${TEMPORAL_CORS_ORIGINS}
+      TEMPORAL_CSRF_COOKIE_INSECURE: ${TEMPORAL_CSRF_COOKIE_INSECURE}
+    stdin_open: true
+    tty: true
+    networks:
+      - workbench-net
+
+  temporal-ui:
+    container_name: workbench-temporal-ui
+    image: temporalio/ui:${TEMPORAL_UI_VERSION:-2.34.0}
+    restart: unless-stopped
+    depends_on:
+      - temporal
+    environment:
+      TEMPORAL_ADDRESS: workbench-temporal:7233
+      TEMPORAL_CORS_ORIGINS: ${TEMPORAL_CORS_ORIGINS}
+      TEMPORAL_CSRF_COOKIE_INSECURE: ${TEMPORAL_CSRF_COOKIE_INSECURE}
+      
+    ports:
+      - "${TEMPORAL_UI_PORT:-8099}:8080"
+    networks:
+      - workbench-net
+
+networks:
+  workbench-net:
+    external: true

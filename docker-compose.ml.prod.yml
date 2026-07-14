@@ -1,0 +1,73 @@
+services:
+  minio:
+    image: minio/minio
+    container_name: mlflow-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - mlflow_minio:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - workbench-net
+
+  create-bucket:
+    image: minio/mc
+    container_name: mlflow-create-bucket
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      echo '🪣 Waiting for MinIO...' &&
+      sleep 5 &&
+      mc alias set local http://minio:9000 minio ${MINIO_SECRET_KEY} &&
+      mc mb -p local/mlflow || true &&
+      mc mb -p local/feature-store || true &&
+      mc mb -p local/market-data || true &&
+      echo '✅ MinIO buckets ready (mlflow & feature-store)'
+      "
+    networks:
+      - workbench-net
+
+  mlflow:
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/mlflow-custom:${IMAGE_TAG:-latest}
+    container_name: mlflow-server
+    restart: unless-stopped
+    depends_on:
+      minio:
+        condition: service_healthy
+      create-bucket:
+        condition: service_started
+    ports:
+      - "5000:5000"
+    environment:
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: minio
+      AWS_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY}
+    command: >
+      mlflow server
+      --backend-store-uri postgresql://${POSTGRES_USER:-workbench}:${POSTGRES_PASSWORD:-workbench_password}@postgres:5432/mlflow
+      --artifacts-destination s3://mlflow
+      --serve-artifacts
+      --host 0.0.0.0
+      --port 5000
+    networks:
+      - workbench-net
+
+volumes:
+  mlflow_minio:
+
+networks:
+  workbench-net:
+    external: true

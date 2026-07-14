@@ -157,16 +157,6 @@ docker image prune -f >/dev/null 2>&1 || true
 
 echo "[7/7] Starting infrastructure..."
 
-# Core Infrastructure (Postgres, Redis)
-if [ -f docker-compose.infra.yml ]; then
-    docker compose -f docker-compose.infra.yml up -d
-fi
-
-# Application (Server, Frontend)
-if [ -f docker-compose.app.yml ]; then
-    docker compose -f docker-compose.app.yml up -d
-fi
-
 # Optional/Advanced Stacks (Copied from ansible structure)
 if [ -f docker-compose.temporal.yml ]; then
     docker compose -f docker-compose.temporal.yml up -d

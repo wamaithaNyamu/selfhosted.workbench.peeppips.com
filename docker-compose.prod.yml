@@ -4,15 +4,15 @@ services:
     restart: unless-stopped
     command: postgres -c listen_addresses='*' -c max_locks_per_transaction=1024
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-workbench}
-      POSTGRES_USER: ${POSTGRES_USER:-workbench}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-workbench_password}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - workbench_postgres_data:/var/lib/postgresql/data
     networks:
       - workbench-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER:-workbench} -d ${POSTGRES_DB:-workbench}"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -161,6 +161,22 @@ services:
         condition: service_started
       deriv-datasource:
         condition: service_started
+    networks:
+      - workbench-net
+
+  frontend:
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/frontend:${IMAGE_TAG:-latest}
+    container_name: workbench-nextjs
+    restart: unless-stopped
+    expose:
+      - "3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
     networks:
       - workbench-net
 

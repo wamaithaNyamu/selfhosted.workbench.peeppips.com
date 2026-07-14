@@ -26,11 +26,36 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-echo "[1/6] Installing prerequisites..."
+echo "[1/7] Installing prerequisites..."
 apt-get update -y -q >/dev/null 2>&1 || true
-apt-get install -y -q git curl openssl >/dev/null 2>&1 || true
+apt-get install -y -q git curl openssl jq >/dev/null 2>&1 || true
 
-echo "[2/6] Checking and installing Docker..."
+echo "[2/7] Verifying License Key..."
+LICENSE_RESPONSE=$(curl -sSL -w "%{http_code}" -o /tmp/license_payload.json "https://license.peeppips.com/licenses/verify?key=$LICENSE_KEY")
+
+if [ "$LICENSE_RESPONSE" != "200" ]; then
+    echo "❌ Error: Invalid, expired, or deactivated license key."
+    echo "Please check your key or visit peeppips.com to renew."
+    rm -f /tmp/license_payload.json
+    exit 1
+fi
+
+TUNNEL_TOKEN=$(jq -r '.tunnel_token' /tmp/license_payload.json)
+PLAN=$(jq -r '.plan' /tmp/license_payload.json)
+MAX_ACCOUNTS=$(jq -r '.max_accounts' /tmp/license_payload.json)
+
+echo "✅ License verified! Plan: $PLAN (Max Accounts: $MAX_ACCOUNTS)"
+rm -f /tmp/license_payload.json
+
+echo "[2.5/7] Fetching Public Key..."
+PUBLIC_KEY_RESP=$(curl -s "https://license.peeppips.com/public-key")
+PUBLIC_KEY=$(echo "$PUBLIC_KEY_RESP" | jq -r '.public_key')
+if [ -z "$PUBLIC_KEY" ] || [ "$PUBLIC_KEY" = "null" ]; then
+    echo "❌ Error: Could not fetch public key from licensing server."
+    exit 1
+fi
+
+echo "[3/7] Checking and installing Docker..."
 if ! command -v docker >/dev/null 2>&1; then
     echo "Docker not found. Installing..."
     curl -fsSL https://get.docker.com | sh >/dev/null 2>&1
@@ -40,7 +65,7 @@ fi
 systemctl start docker || true
 systemctl enable docker || true
 
-echo "[3/6] Cloning the repository to $PROJECT_ROOT..."
+echo "[4/7] Cloning the repository to $PROJECT_ROOT..."
 if [ ! -d "$PROJECT_ROOT" ]; then
     git clone -q "$REPO_URL" "$PROJECT_ROOT"
 else
@@ -50,14 +75,15 @@ fi
 
 cd "$PROJECT_ROOT"
 
-echo "[4/6] Setting up Environment Variables..."
+echo "[5/7] Setting up Environment Variables..."
 if [ ! -f .env ]; then
-    echo "Generating secure passwords..."
+    echo "Generating secure passwords and encryption keys..."
     # Generate random passwords
     PG_PASS=$(openssl rand -hex 16)
     AUTH_PASS=$(openssl rand -hex 16)
     MINIO_SECRET=$(openssl rand -hex 16)
     GRAFANA_PASS=$(openssl rand -hex 16)
+    CRED_ENC_KEY=$(openssl rand -hex 16)
     
     cat <<EOF > .env
 POSTGRES_HOST=postgres
@@ -76,17 +102,49 @@ AUTH_PASSWORD=${AUTH_PASS}
 MINIO_SECRET_KEY=${MINIO_SECRET}
 GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASS}
 LICENSE_KEY=${LICENSE_KEY}
+LICENSE_PUBLIC_KEY=${PUBLIC_KEY}
+TUNNEL_TOKEN=${TUNNEL_TOKEN}
+MAX_ACCOUNTS=${MAX_ACCOUNTS}
+CREDENTIALS_ENCRYPTION_KEY=${CRED_ENC_KEY}
+IMAGE_TAG=latest
 EOF
 else
-    echo ".env already exists, ensuring LICENSE_KEY is set..."
+    echo ".env already exists, ensuring licensing and encryption keys are set..."
+    
+    # Ensure LICENSE_KEY
     if ! grep -q "^LICENSE_KEY=" .env; then
         echo "LICENSE_KEY=${LICENSE_KEY}" >> .env
     else
         sed -i "s/^LICENSE_KEY=.*/LICENSE_KEY=${LICENSE_KEY}/" .env
     fi
+
+    # Ensure LICENSE_PUBLIC_KEY
+    if ! grep -q "^LICENSE_PUBLIC_KEY=" .env; then
+        echo "LICENSE_PUBLIC_KEY=${PUBLIC_KEY}" >> .env
+    else
+        sed -i "s|^LICENSE_PUBLIC_KEY=.*|LICENSE_PUBLIC_KEY=${PUBLIC_KEY}|" .env
+    fi
+
+    # Ensure TUNNEL_TOKEN
+    if ! grep -q "^TUNNEL_TOKEN=" .env; then
+        echo "TUNNEL_TOKEN=${TUNNEL_TOKEN}" >> .env
+    else
+        sed -i "s|^TUNNEL_TOKEN=.*|TUNNEL_TOKEN=${TUNNEL_TOKEN}|" .env
+    fi
+
+    # Ensure CREDENTIALS_ENCRYPTION_KEY
+    if ! grep -q "^CREDENTIALS_ENCRYPTION_KEY=" .env; then
+        CRED_ENC_KEY=$(openssl rand -hex 16)
+        echo "CREDENTIALS_ENCRYPTION_KEY=${CRED_ENC_KEY}" >> .env
+    fi
+
+    # Ensure IMAGE_TAG defaults to prod
+    if ! grep -q "^IMAGE_TAG=" .env; then
+        echo "IMAGE_TAG=prod" >> .env
+    fi
 fi
 
-echo "[5/6] Setting up Docker networks and volumes..."
+echo "[6/7] Setting up Docker networks and volumes..."
 docker network create workbench-net 2>/dev/null || true
 
 mkdir -p /var/lib/workbench/mt5
@@ -97,7 +155,7 @@ chmod 0777 /var/lib/workbench/wine
 docker container prune -f >/dev/null 2>&1 || true
 docker image prune -f >/dev/null 2>&1 || true
 
-echo "[6/6] Starting infrastructure..."
+echo "[7/7] Starting infrastructure..."
 
 # Core Infrastructure (Postgres, Redis)
 if [ -f docker-compose.infra.yml ]; then

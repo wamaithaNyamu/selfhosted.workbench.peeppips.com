@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/postgres:${IMAGE_TAG:-staging}
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/postgres:latest
     restart: unless-stopped
     command: postgres -c listen_addresses='*' -c max_locks_per_transaction=1024
     environment:
@@ -24,7 +24,7 @@ services:
       - workbench-net
 
   migrate:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/migrate:${IMAGE_TAG:-staging}
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/migrate:latest
     restart: "no"
     env_file:
       - .env
@@ -35,7 +35,7 @@ services:
       - workbench-net
 
   mt5-ingest:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/mt5-ingest:${IMAGE_TAG:-staging}
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/mt5-ingest:latest
     restart: unless-stopped
     env_file:
       - .env
@@ -46,7 +46,7 @@ services:
       - workbench-net
 
   deriv-datasource:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/deriv-datasource:${IMAGE_TAG:-staging}
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/deriv-datasource:latest
     restart: unless-stopped
     env_file:
       - .env
@@ -57,7 +57,7 @@ services:
       - workbench-net
 
   go-temporal-worker:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/go-temporal-workers:${IMAGE_TAG:-staging}
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/go-temporal-workers:latest
     restart: unless-stopped
     command: ["/usr/local/bin/worker"]
     env_file:
@@ -78,7 +78,7 @@ services:
       - workbench-net
 
   go-temporal-api-gateway:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/go-temporal-workers:${IMAGE_TAG:-staging}
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/go-temporal-workers:latest
     restart: unless-stopped
     command: ["/usr/local/bin/api-gateway"]
     env_file:
@@ -92,7 +92,7 @@ services:
       - workbench-net
 
   python-temporal-worker:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/python-temporal-workers:${IMAGE_TAG:-staging}
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/python-temporal-workers:latest
     restart: unless-stopped
     command: ["python", "workers/worker.py"]
     env_file:
@@ -107,7 +107,7 @@ services:
       - workbench-net
 
   python-api-gateway:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/python-temporal-workers:${IMAGE_TAG:-staging}
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/python-temporal-workers:latest
     restart: unless-stopped
     env_file:
       - .env
@@ -121,7 +121,7 @@ services:
       - workbench-net
 
   strategy-runner:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/strategy-runner:${IMAGE_TAG:-staging}
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/strategy-runner:latest
     restart: unless-stopped
     env_file:
       - .env
@@ -129,7 +129,7 @@ services:
       - workbench-net
 
   mt5-api:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/mt5-python-runner:${IMAGE_TAG:-staging}
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/mt5-python-runner:latest
     restart: unless-stopped
     env_file:
       - .env
@@ -144,7 +144,7 @@ services:
       - workbench-net
 
   server:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/server:${IMAGE_TAG:-staging}
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/server:latest
     restart: unless-stopped
     env_file:
       - .env
@@ -165,7 +165,7 @@ services:
       - workbench-net
 
   frontend:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/frontend:${IMAGE_TAG:-latest}
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/frontend:latest
     container_name: workbench-nextjs
     restart: unless-stopped
     expose:

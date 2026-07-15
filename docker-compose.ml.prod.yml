@@ -41,7 +41,7 @@ services:
       - workbench-net
 
   mlflow:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/mlflow-custom:${IMAGE_TAG:-latest}
+    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/mlflow-custom:latest
     container_name: mlflow-server
     restart: unless-stopped
     depends_on:

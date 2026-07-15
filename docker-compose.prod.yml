@@ -189,6 +189,9 @@ services:
       - .env
     environment:
       - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    depends_on:
+      - frontend
+      - server
     networks:
       - workbench-net
 

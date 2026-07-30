@@ -1,0 +1,115 @@
+{
+    order coraza_waf first
+}
+
+(coraza_setup) {
+    coraza_waf {
+        include /opt/coraza/config/coraza.conf
+        include /opt/coraza/config.d/*.conf
+        include /opt/coraza/config/crs-setup.conf
+        include /opt/coraza/owasp-crs/plugins/*-config.conf
+        include /opt/coraza/owasp-crs/plugins/*-before.conf
+        include /opt/coraza/owasp-crs/rules/*.conf
+        include /opt/coraza/owasp-crs/plugins/*-after.conf
+        include /opt/coraza/plugins/*-after.conf
+        include /opt/coraza/rules/*.conf
+        include /opt/coraza/rules.d/*.conf
+        include /opt/coraza/overrides/*.conf
+    }
+}
+
+# Main Web UI (Frontend)
+:3000 {
+    import coraza_setup
+    reverse_proxy workbench-nextjs:3000
+}
+
+# Go API Gateway
+:18081 {
+    import coraza_setup
+    reverse_proxy server:8080
+}
+
+# MT5 Ingest Service
+:19090 {
+    import coraza_setup
+    
+    forward_auth server:8080 {
+        uri /api/v1/auth/verify-proxy
+        copy_headers X-User-Id X-User-Email
+    }
+    reverse_proxy mt5-ingest:9090
+}
+
+# Deriv Datasource Service
+:18090 {
+    import coraza_setup
+    
+    forward_auth server:8080 {
+        uri /api/v1/auth/verify-proxy
+        copy_headers X-User-Id X-User-Email
+    }
+    reverse_proxy deriv-datasource:8090
+}
+
+# Checkout Frontend
+:18082 {
+    import coraza_setup
+    reverse_proxy launch-flow-checkout:8082
+}
+
+
+
+# Python ML API
+:18000 {
+    import coraza_setup
+    
+    forward_auth server:8080 {
+        uri /api/v1/auth/verify-proxy
+        copy_headers X-User-Id X-User-Email
+    }
+    reverse_proxy workbench-python-api-gateway:8000
+}
+
+# ====================================================
+# 3rd-Party Admin UIs (Protected by ForwardAuth SSO)
+# ====================================================
+
+# Temporal Web UI
+:18099 {
+    forward_auth server:8080 {
+        uri /api/v1/auth/verify-admin-proxy
+        copy_headers X-User-Id X-User-Email
+    }
+    reverse_proxy workbench-temporal-ui:8080
+}
+
+# Minio Browser
+:19001 {
+    forward_auth server:8080 {
+        uri /api/v1/auth/verify-proxy
+        copy_headers X-User-Id X-User-Email
+    }
+    reverse_proxy mlflow-minio:9001
+}
+
+# MLFlow UI
+:15000 {
+    forward_auth server:8080 {
+        uri /api/v1/auth/verify-proxy
+        copy_headers X-User-Id X-User-Email
+    }
+    reverse_proxy mlflow-server:5000
+}
+
+# Grafana
+:13001 {
+    forward_auth server:8080 {
+        uri /api/v1/auth/verify-proxy
+        copy_headers X-User-Id X-User-Email
+    }
+    reverse_proxy workbench-grafana:3000
+}
+
+# Dev-only conditional routes (these will fail silently if the dev-routes directory is not mounted)
+import /dev-routes/*.conf

@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/postgres:latest
+    image: ghcr.io/${GHCR_USERNAME}/postgres:${IMAGE_TAG}
     restart: unless-stopped
     command: postgres -c listen_addresses='*' -c max_locks_per_transaction=1024
     environment:
@@ -24,7 +24,7 @@ services:
       - workbench-net
 
   migrate:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/migrate:latest
+    image: ghcr.io/${GHCR_USERNAME}/migrate:${IMAGE_TAG}
     restart: "no"
     env_file:
       - .env
@@ -35,7 +35,7 @@ services:
       - workbench-net
 
   mt5-ingest:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/mt5-ingest:latest
+    image: ghcr.io/${GHCR_USERNAME}/mt5-ingest:${IMAGE_TAG}
     restart: unless-stopped
     env_file:
       - .env
@@ -46,7 +46,7 @@ services:
       - workbench-net
 
   deriv-datasource:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/deriv-datasource:latest
+    image: ghcr.io/${GHCR_USERNAME}/deriv-datasource:${IMAGE_TAG}
     restart: unless-stopped
     env_file:
       - .env
@@ -57,7 +57,8 @@ services:
       - workbench-net
 
   go-temporal-worker:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/go-temporal-workers:latest
+    image: ghcr.io/${GHCR_USERNAME}/go-temporal-workers:${IMAGE_TAG}
+    container_name: workbench-go-temporal-worker
     restart: unless-stopped
     command: ["/usr/local/bin/worker"]
     env_file:
@@ -70,6 +71,7 @@ services:
       MT5_DOCKER_HOST_WINE_ROOT: /var/lib/workbench/wine
       MT5_WORKER_DATA_ROOT: /mt5
       MT5_WORKER_WINE_ROOT: /wine
+      MT5_PYTHON_IMAGE: ghcr.io/${GHCR_USERNAME}/mt5-python-runner:${IMAGE_TAG}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /home/devuser/backend.workbench.client:/mt5
@@ -78,7 +80,8 @@ services:
       - workbench-net
 
   go-temporal-api-gateway:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/go-temporal-workers:latest
+    image: ghcr.io/${GHCR_USERNAME}/go-temporal-workers:${IMAGE_TAG}
+    container_name: workbench-go-temporal-api-gateway
     restart: unless-stopped
     command: ["/usr/local/bin/api-gateway"]
     env_file:
@@ -92,22 +95,24 @@ services:
       - workbench-net
 
   python-temporal-worker:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/python-temporal-workers:latest
+    image: ghcr.io/${GHCR_USERNAME}/python-temporal-workers:${IMAGE_TAG}
+    container_name: workbench-python-temporal-worker
     restart: unless-stopped
-    command: ["python", "workers/worker.py"]
+    command: ["python", "/app/run_worker.py"]
     env_file:
       - .env
     environment:
       TEMPORAL_HOST: workbench-temporal
       TEMPORAL_PORT: 7233
       MINIO_ENDPOINT: http://minio:9000
-      MINIO_ACCESS_KEY: minio
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
     networks:
       - workbench-net
 
   python-api-gateway:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/python-temporal-workers:latest
+    image: ghcr.io/${GHCR_USERNAME}/python-temporal-workers:${IMAGE_TAG}
+    container_name: workbench-python-api-gateway
     restart: unless-stopped
     env_file:
       - .env
@@ -115,13 +120,14 @@ services:
       TEMPORAL_HOST: workbench-temporal
       TEMPORAL_PORT: 7233
       MINIO_ENDPOINT: http://minio:9000
-      MINIO_ACCESS_KEY: minio
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
     networks:
       - workbench-net
 
   strategy-runner:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/strategy-runner:latest
+    image: ghcr.io/${GHCR_USERNAME}/strategy-runner:${IMAGE_TAG}
+    container_name: workbench-strategy-runner
     restart: unless-stopped
     env_file:
       - .env
@@ -129,27 +135,22 @@ services:
       - workbench-net
 
   mt5-api:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/mt5-python-runner:latest
+    image: ghcr.io/${GHCR_USERNAME}/mt5-python-runner:${IMAGE_TAG}
     restart: unless-stopped
     env_file:
       - .env
     volumes:
       - wine_environment:/home/wineuser/.wine
     environment:
-      MT5_LOGIN: ${MT5_LOGIN}
-      MT5_PASSWORD: ${MT5_PASSWORD}
-      MT5_SERVER: ${MT5_SERVER}
       MT5_API_PORT: 8000
     networks:
       - workbench-net
 
   server:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/server:latest
+    image: ghcr.io/${GHCR_USERNAME}/server:${IMAGE_TAG}
     restart: unless-stopped
     env_file:
       - .env
-    environment:
-      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
     depends_on:
       postgres:
         condition: service_healthy
@@ -161,22 +162,53 @@ services:
         condition: service_started
       deriv-datasource:
         condition: service_started
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - workbench-net
 
-  frontend:
-    image: ghcr.io/${GHCR_USERNAME:-wamaithanyamu}/frontend:latest
-    container_name: workbench-nextjs
+#  frontend:
+#    image: ghcr.io/${GHCR_USERNAME}/frontend:${IMAGE_TAG}
+#    container_name: workbench-nextjs
+#    restart: unless-stopped
+#    expose:
+#      - "3000"
+#    env_file:
+#      - .env
+#    environment:
+#      NODE_ENV: production
+#      NEXT_TELEMETRY_DISABLED: "1"
+#      PORT: "3000"
+#      HOSTNAME: 0.0.0.0
+#    networks:
+#      - workbench-net
+
+  caddy-waf:
+    image: ghcr.io/coreruleset/coraza-crs:4.25.0-caddy-alpine-lts
+    container_name: workbench-caddy-waf
     restart: unless-stopped
-    expose:
-      - "3000"
-    env_file:
-      - .env
-    environment:
-      NODE_ENV: production
-      NEXT_TELEMETRY_DISABLED: "1"
-      PORT: "3000"
-      HOSTNAME: 0.0.0.0
+    ports:
+      - "3000:3000"
+      - "18081:18081"
+      - "19090:19090"
+      - "18090:18090"
+      - "18082:18082"
+      - "18110:18110"
+      - "18000:18000"
+      - "18099:18099" # Temporal UI
+      - "19001:19001" # Minio
+      - "15000:15000" # MLFlow
+      - "13001:13001" # Grafana
+    volumes:
+      - ./infra/waf/Caddyfile:/custom-Caddyfile:ro
+      - ./infra/waf/dev-routes:/dev-routes:ro
+      - ./infra/waf/overrides:/opt/coraza/overrides:ro
+    command: caddy run --config /custom-Caddyfile --adapter caddyfile
+    depends_on:
+      - server
+      - mt5-ingest
+      - deriv-datasource
+      - launch-flow-checkout
     networks:
       - workbench-net
 
@@ -190,8 +222,23 @@ services:
     environment:
       - TUNNEL_TOKEN=${TUNNEL_TOKEN}
     depends_on:
-      - frontend
-      - server
+#      - frontend
+      - caddy-waf
+    networks:
+      - workbench-net
+
+  launch-flow-checkout:
+    image: ghcr.io/${GHCR_USERNAME}/launch-flow-checkout:${IMAGE_TAG}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      PORT: 8082
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - workbench-net
 

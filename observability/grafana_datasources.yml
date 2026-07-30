@@ -51,4 +51,3 @@ datasources:
     # 👇 Links Tempo directly to Loki for effortless trace-to-log jumping
     lokiSearch:
       datasourceUid: loki
-

@@ -6,7 +6,6 @@ services:
     container_name: workbench-prometheus
     user: root
     restart: unless-stopped
-    
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --web.enable-remote-write-receiver
@@ -18,21 +17,6 @@ services:
     volumes:
       - prometheus_data:/prometheus
       - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml
-    networks:
-      - workbench-net
-
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
-    container_name: workbench-cadvisor
-    restart: unless-stopped
-    privileged: true
-    ports:
-      - "8089:8080"
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:rw
-      - /sys:/sys:ro
-      - ${DOCKER_ROOT:-/var/lib/docker}:${DOCKER_ROOT:-/var/lib/docker}:ro
     networks:
       - workbench-net
 

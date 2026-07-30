@@ -43,8 +43,9 @@ fi
 TUNNEL_TOKEN=$(jq -r '.tunnel_token' /tmp/license_payload.json)
 PLAN=$(jq -r '.plan' /tmp/license_payload.json)
 MAX_ACCOUNTS=$(jq -r '.max_accounts' /tmp/license_payload.json)
+ADMIN_EMAIL=$(jq -r '.email' /tmp/license_payload.json)
 
-echo "✅ License verified! Plan: $PLAN (Max Accounts: $MAX_ACCOUNTS)"
+echo "✅ License verified! Plan: $PLAN (Max Accounts: $MAX_ACCOUNTS, Admin: $ADMIN_EMAIL)"
 rm -f /tmp/license_payload.json
 
 echo "[2.5/7] Fetching Public Key..."
@@ -84,6 +85,7 @@ if [ ! -f .env ]; then
     MINIO_SECRET=$(openssl rand -hex 16)
     GRAFANA_PASS=$(openssl rand -hex 16)
     CRED_ENC_KEY=$(openssl rand -hex 16)
+    INTERNAL_API_KEY=$(openssl rand -hex 32)
     
     cat <<EOF > .env
 POSTGRES_HOST=postgres
@@ -106,7 +108,15 @@ LICENSE_PUBLIC_KEY=${PUBLIC_KEY}
 TUNNEL_TOKEN=${TUNNEL_TOKEN}
 MAX_ACCOUNTS=${MAX_ACCOUNTS}
 CREDENTIALS_ENCRYPTION_KEY=${CRED_ENC_KEY}
+INTERNAL_SERVICE_API_KEY=${INTERNAL_API_KEY}
+ADMIN_EMAIL=${ADMIN_EMAIL}
 IMAGE_TAG=latest
+NODE_ENV=production
+NEXT_TELEMETRY_DISABLED="1"
+INTERNAL_API_URL=http://caddy-waf:18081/api
+INTERNAL_DERIV_API_URL=http://caddy-waf:18090
+INTERNAL_MT5_API_URL=http://caddy-waf:19090
+INTERNAL_ML_API_URL=http://caddy-waf:18000/api/v1
 EOF
 else
     echo ".env already exists, ensuring licensing and encryption keys are set..."
@@ -138,9 +148,22 @@ else
         echo "CREDENTIALS_ENCRYPTION_KEY=${CRED_ENC_KEY}" >> .env
     fi
 
-    # Ensure IMAGE_TAG defaults to prod
+    # Ensure INTERNAL_SERVICE_API_KEY
+    if ! grep -q "^INTERNAL_SERVICE_API_KEY=" .env; then
+        INTERNAL_API_KEY=$(openssl rand -hex 32)
+        echo "INTERNAL_SERVICE_API_KEY=${INTERNAL_API_KEY}" >> .env
+    fi
+
+    # Ensure ADMIN_EMAIL
+    if ! grep -q "^ADMIN_EMAIL=" .env; then
+        echo "ADMIN_EMAIL=${ADMIN_EMAIL}" >> .env
+    else
+        sed -i "s|^ADMIN_EMAIL=.*|ADMIN_EMAIL=${ADMIN_EMAIL}|" .env
+    fi
+
+    # Ensure IMAGE_TAG defaults to latest
     if ! grep -q "^IMAGE_TAG=" .env; then
-        echo "IMAGE_TAG=prod" >> .env
+        echo "IMAGE_TAG=latest" >> .env
     fi
 fi
 
@@ -149,11 +172,37 @@ docker network create workbench-net 2>/dev/null || true
 
 mkdir -p /var/lib/workbench/mt5
 mkdir -p /var/lib/workbench/wine
+mkdir -p /var/lib/grafana
 chmod 0777 /var/lib/workbench/mt5
 chmod 0777 /var/lib/workbench/wine
+chmod 0777 /var/lib/grafana
 
 docker container prune -f >/dev/null 2>&1 || true
 docker image prune -f >/dev/null 2>&1 || true
+
+echo "[6.5/7] Pulling required base images..."
+IMAGES=(
+  "golang:1.25"
+  "golang:1.25-alpine"
+  "scottyhardy/docker-wine:latest"
+  "timescale/timescaledb:2.19.1-pg17"
+  "redis:7-alpine"
+  "temporalio/auto-setup:1.27.2"
+  "temporalio/ui:2.34.0"
+  "temporalio/admin-tools:1.27.2-tctl-1.18.2-cli-1.3.0"
+  "cosmtrek/air:latest"
+  "grafana/loki:3.2.1"
+  "grafana/promtail:3.2.1"
+  "grafana/grafana:11.2.2"
+  "prom/prometheus"
+  "prom/node-exporter"
+  "grafana/tempo:latest"
+  "otel/opentelemetry-collector-contrib:latest"
+  "node:22-alpine"
+)
+for img in "${IMAGES[@]}"; do
+  docker pull "$img" >/dev/null 2>&1 || true
+done
 
 echo "[7/7] Starting infrastructure..."
 

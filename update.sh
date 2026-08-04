@@ -5,6 +5,13 @@
 
 echo "🔄 Starting Workbench Update Process..."
 
+TARGET_VERSION=$1
+if [ -n "$TARGET_VERSION" ]; then
+    echo "🎯 Target version provided: $TARGET_VERSION. Updating .env..."
+    # Support rollback/upgrades by setting the new IMAGE_TAG
+    sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=$TARGET_VERSION/" .env
+fi
+
 # 1. Update the selfhosted repository itself to get the latest compose files
 echo "[1/4] Pulling latest compose files..."
 git pull origin main || echo "Git pull failed, continuing with current compose files..."

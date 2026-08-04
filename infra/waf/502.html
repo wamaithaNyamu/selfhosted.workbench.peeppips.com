@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Updating - Peeppips</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        .container {
+            max-width: 500px;
+            padding: 40px;
+            background: #161b22;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            border: 1px solid #30363d;
+        }
+        h1 {
+            color: #58a6ff;
+            margin-bottom: 15px;
+        }
+        p {
+            font-size: 1.1em;
+            line-height: 1.5;
+            color: #8b949e;
+        }
+        .spinner {
+            margin: 30px auto;
+            width: 50px;
+            height: 50px;
+            border: 5px solid #30363d;
+            border-top: 5px solid #58a6ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner"></div>
+        <h1>System Updating...</h1>
+        <p>The Peeppips Workbench is currently applying an update or restarting.</p>
+        <p>Please hold on. This page will automatically refresh as soon as the system is back online.</p>
+    </div>
+
+    <script>
+        // Check health endpoint every 3 seconds
+        setInterval(async () => {
+            try {
+                const response = await fetch('/health', { cache: 'no-store' });
+                if (response.ok) {
+                    window.location.reload();
+                }
+            } catch (err) {
+                // Ignore network errors while system is down
+            }
+        }, 3000);
+    </script>
+</body>
+</html>

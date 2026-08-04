@@ -164,24 +164,24 @@ services:
         condition: service_started
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /opt/peeppips-workbench:/opt/peeppips-workbench:rw
     networks:
       - workbench-net
 
-#  frontend:
-#    image: ghcr.io/${GHCR_USERNAME}/frontend:${IMAGE_TAG}
-#    container_name: workbench-nextjs
-#    restart: unless-stopped
-#    expose:
-#      - "3000"
-#    env_file:
-#      - .env
-#    environment:
-#      NODE_ENV: production
-#      NEXT_TELEMETRY_DISABLED: "1"
-#      PORT: "3000"
-#      HOSTNAME: 0.0.0.0
-#    networks:
-#      - workbench-net
+  frontend:
+    image: ghcr.io/${GHCR_USERNAME}/frontend:${IMAGE_TAG}
+    container_name: workbench-nextjs
+    restart: unless-stopped
+    expose:
+      - "3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      PORT: "3000"
+    networks:
+      - workbench-net
 
   caddy-waf:
     image: ghcr.io/coreruleset/coraza-crs:4.25.0-caddy-alpine-lts
@@ -192,23 +192,21 @@ services:
       - "18081:18081"
       - "19090:19090"
       - "18090:18090"
-      - "18082:18082"
       - "18110:18110"
       - "18000:18000"
-      - "18099:18099" # Temporal UI
-      - "19001:19001" # Minio
-      - "15000:15000" # MLFlow
-      - "13001:13001" # Grafana
+      - "18099:18099" 
+      - "19001:19001" 
+      - "15000:15000" 
+      - "13001:13001" 
     volumes:
+      - ./infra/waf/502.html:/etc/caddy/errors/502.html:ro
       - ./infra/waf/Caddyfile:/custom-Caddyfile:ro
-      - ./infra/waf/dev-routes:/dev-routes:ro
       - ./infra/waf/overrides:/opt/coraza/overrides:ro
     command: caddy run --config /custom-Caddyfile --adapter caddyfile
     depends_on:
       - server
       - mt5-ingest
       - deriv-datasource
-      - launch-flow-checkout
     networks:
       - workbench-net
 
@@ -222,25 +220,11 @@ services:
     environment:
       - TUNNEL_TOKEN=${TUNNEL_TOKEN}
     depends_on:
-#      - frontend
+      - frontend
       - caddy-waf
     networks:
       - workbench-net
 
-  launch-flow-checkout:
-    image: ghcr.io/${GHCR_USERNAME}/launch-flow-checkout:${IMAGE_TAG}
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      PORT: 8082
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - workbench-net
 
 volumes:
   workbench_postgres_data:

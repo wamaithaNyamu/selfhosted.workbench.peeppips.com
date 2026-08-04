@@ -44,6 +44,7 @@ TUNNEL_TOKEN=$(jq -r '.tunnel_token' /tmp/license_payload.json)
 PLAN=$(jq -r '.plan' /tmp/license_payload.json)
 MAX_ACCOUNTS=$(jq -r '.max_accounts' /tmp/license_payload.json)
 ADMIN_EMAIL=$(jq -r '.email' /tmp/license_payload.json)
+SUBDOMAIN=$(jq -r '.subdomain' /tmp/license_payload.json)
 
 echo "✅ License verified! Plan: $PLAN (Max Accounts: $MAX_ACCOUNTS, Admin: $ADMIN_EMAIL)"
 rm -f /tmp/license_payload.json
@@ -101,7 +102,9 @@ REDIS_ADDR=redis:6379
 SERVER_PORT=8080
 PORT=8080
 AUTH_PASSWORD=${AUTH_PASS}
+MINIO_ACCESS_KEY=admin
 MINIO_SECRET_KEY=${MINIO_SECRET}
+GF_SECURITY_ADMIN_USER=admin
 GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASS}
 LICENSE_KEY=${LICENSE_KEY}
 LICENSE_PUBLIC_KEY=${PUBLIC_KEY}
@@ -110,6 +113,7 @@ MAX_ACCOUNTS=${MAX_ACCOUNTS}
 CREDENTIALS_ENCRYPTION_KEY=${CRED_ENC_KEY}
 INTERNAL_SERVICE_API_KEY=${INTERNAL_API_KEY}
 ADMIN_EMAIL=${ADMIN_EMAIL}
+GHCR_USERNAME=wamaithanyamu
 IMAGE_TAG=latest
 NODE_ENV=production
 NEXT_TELEMETRY_DISABLED="1"
@@ -117,6 +121,23 @@ INTERNAL_API_URL=http://caddy-waf:18081/api
 INTERNAL_DERIV_API_URL=http://caddy-waf:18090
 INTERNAL_MT5_API_URL=http://caddy-waf:19090
 INTERNAL_ML_API_URL=http://caddy-waf:18000/api/v1
+TEMPORAL_GATEWAY_URL=http://workbench-go-temporal-api-gateway:8110
+PROMETHEUS_URL=http://workbench-prometheus:9090
+OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+COMPOSE_PROJECT_NAME=backendworkbenchclient
+TEMPORAL_CORS_ORIGINS=https://${SUBDOMAIN}
+TEMPORAL_CSRF_COOKIE_INSECURE=true
+TEMPORAL_VERSION=1.27.2
+TEMPORAL_ADMINTOOLS_VERSION=1.27.2-tctl-1.18.2-cli-1.3.0
+TEMPORAL_DB=temporal
+TEMPORAL_VISIBILITY_DB=temporal_visibility
+TEMPORAL_UI_VERSION=2.34.0
+TEMPORAL_HOST=workbench-temporal
+TEMPORAL_DEFAULT_NAMESPACE=default
+TEMPORAL_DEFAULT_NAMESPACE_RETENTION=30d
+TARGET_NETWORK=workbench-net
+POSTGRES_HOST_SEEDS=postgres
+MT5_DOCKER_HOST_WINE_ROOT=/var/lib/workbench/wine
 EOF
 else
     echo ".env already exists, ensuring licensing and encryption keys are set..."
@@ -154,13 +175,7 @@ else
         echo "INTERNAL_SERVICE_API_KEY=${INTERNAL_API_KEY}" >> .env
     fi
 
-    # Ensure ADMIN_EMAIL
-    if ! grep -q "^ADMIN_EMAIL=" .env; then
-        echo "ADMIN_EMAIL=${ADMIN_EMAIL}" >> .env
-    else
-        sed -i "s|^ADMIN_EMAIL=.*|ADMIN_EMAIL=${ADMIN_EMAIL}|" .env
-    fi
-
+   
     # Ensure IMAGE_TAG defaults to latest
     if ! grep -q "^IMAGE_TAG=" .env; then
         echo "IMAGE_TAG=latest" >> .env
@@ -190,7 +205,6 @@ IMAGES=(
   "temporalio/auto-setup:1.27.2"
   "temporalio/ui:2.34.0"
   "temporalio/admin-tools:1.27.2-tctl-1.18.2-cli-1.3.0"
-  "cosmtrek/air:latest"
   "grafana/loki:3.2.1"
   "grafana/promtail:3.2.1"
   "grafana/grafana:11.2.2"
@@ -224,7 +238,7 @@ fi
 
 # If using docker-compose.prod.yml from the ansible format
 if [ -f docker-compose.prod.yml ]; then
-    docker compose -f docker-compose.prod.yml up -d --pull always server cloudflared
+    docker compose -f docker-compose.prod.yml up -d --pull always
 fi
 
 echo "================================================="

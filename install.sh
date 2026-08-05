@@ -258,11 +258,29 @@ fi
 echo "Stopping any conflicting containers..."
 $COMPOSE_CMD down --remove-orphans || true
 
-echo "[7/7] Starting infrastructure in dependency-aware order..."
+echo "[7/8] Pulling images safely to avoid network saturation..."
+export COMPOSE_PARALLEL_LIMIT=1
 MAX_RETRIES=3
 RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if $COMPOSE_CMD up -d --pull always --remove-orphans; then
+    if $COMPOSE_CMD pull; then
+        echo "Images pulled successfully!"
+        break
+    else
+        RETRY_COUNT=$((RETRY_COUNT+1))
+        if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+            echo "❌ Failed to pull images after $MAX_RETRIES attempts. Please check your network connection."
+            exit 1
+        fi
+        echo "⚠️ Docker pull failed (likely a network timeout). Retrying in 10 seconds... (Attempt $RETRY_COUNT of $MAX_RETRIES)"
+        sleep 10
+    fi
+done
+
+echo "[8/8] Starting infrastructure in dependency-aware order..."
+RETRY_COUNT=0
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if $COMPOSE_CMD up -d --remove-orphans; then
         echo "Infrastructure started successfully!"
         break
     else
@@ -271,7 +289,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
             echo "❌ Failed to start infrastructure after $MAX_RETRIES attempts. Please check your network connection and try again."
             exit 1
         fi
-        echo "⚠️ Docker Compose failed (likely a network timeout). Retrying in 10 seconds... (Attempt $RETRY_COUNT of $MAX_RETRIES)"
+        echo "⚠️ Docker Compose failed to start. Retrying in 10 seconds... (Attempt $RETRY_COUNT of $MAX_RETRIES)"
         sleep 10
     fi
 done

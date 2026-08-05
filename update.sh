@@ -30,12 +30,44 @@ if [ -f docker-compose.logs.yml ]; then
     COMPOSE_CMD="$COMPOSE_CMD -f docker-compose.logs.yml -f docker-compose.metrics.yml -f docker-compose.tracing.yml -f docker-compose.otel.yml"
 fi
 
-echo "[3/4] Pulling and restarting services in dependency-aware order..."
-$COMPOSE_CMD pull
-$COMPOSE_CMD up -d --remove-orphans
+MAX_RETRIES=3
 
-# 4. Cleanup old dangling images to save disk space
-echo "[4/4] Cleaning up old images..."
+echo "[3/5] Pulling latest images with retries..."
+RETRY_COUNT=0
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if $COMPOSE_CMD pull; then
+        echo "Images pulled successfully!"
+        break
+    else
+        RETRY_COUNT=$((RETRY_COUNT+1))
+        if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+            echo "❌ Failed to pull images after $MAX_RETRIES attempts. Please check your network."
+            exit 1
+        fi
+        echo "⚠️ Docker pull failed (likely a network timeout). Retrying in 10 seconds... (Attempt $RETRY_COUNT of $MAX_RETRIES)"
+        sleep 10
+    fi
+done
+
+echo "[4/5] Restarting services in dependency-aware order..."
+RETRY_COUNT=0
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if $COMPOSE_CMD up -d --remove-orphans; then
+        echo "Services restarted successfully!"
+        break
+    else
+        RETRY_COUNT=$((RETRY_COUNT+1))
+        if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+            echo "❌ Failed to start services after $MAX_RETRIES attempts. Please check your network."
+            exit 1
+        fi
+        echo "⚠️ Docker Compose up failed (likely a network timeout). Retrying in 10 seconds... (Attempt $RETRY_COUNT of $MAX_RETRIES)"
+        sleep 10
+    fi
+done
+
+# 5. Cleanup old dangling images to save disk space
+echo "[5/5] Cleaning up old images..."
 docker image prune -f >/dev/null 2>&1 || true
 
 echo "✅ Update complete! System is running the latest version."

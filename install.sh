@@ -74,6 +74,17 @@ if ! command -v docker >/dev/null 2>&1; then
 else
     echo "Docker is already installed."
 fi
+
+echo "Configuring Docker daemon to prevent network timeouts..."
+mkdir -p /etc/docker
+if [ ! -f /etc/docker/daemon.json ]; then
+    echo '{"max-concurrent-downloads": 1}' > /etc/docker/daemon.json
+    systemctl restart docker || true
+elif ! grep -q "max-concurrent-downloads" /etc/docker/daemon.json; then
+    jq '. + {"max-concurrent-downloads": 1}' /etc/docker/daemon.json > /tmp/daemon.json.tmp && mv /tmp/daemon.json.tmp /etc/docker/daemon.json
+    systemctl restart docker || true
+fi
+
 systemctl start docker || true
 systemctl enable docker || true
 
@@ -248,7 +259,22 @@ echo "Stopping any conflicting containers..."
 $COMPOSE_CMD down --remove-orphans || true
 
 echo "[7/7] Starting infrastructure in dependency-aware order..."
-$COMPOSE_CMD up -d --pull always --remove-orphans
+MAX_RETRIES=3
+RETRY_COUNT=0
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if $COMPOSE_CMD up -d --pull always --remove-orphans; then
+        echo "Infrastructure started successfully!"
+        break
+    else
+        RETRY_COUNT=$((RETRY_COUNT+1))
+        if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+            echo "❌ Failed to start infrastructure after $MAX_RETRIES attempts. Please check your network connection and try again."
+            exit 1
+        fi
+        echo "⚠️ Docker Compose failed (likely a network timeout). Retrying in 10 seconds... (Attempt $RETRY_COUNT of $MAX_RETRIES)"
+        sleep 10
+    fi
+done
 
 echo "================================================================"
 echo " Installation completed successfully!                           "

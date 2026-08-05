@@ -17,6 +17,9 @@ echo "================================================="
 echo "   Peeppips AI Workbench - One-Command Install   "
 echo "================================================="
 
+SCRIPT_START=$SECONDS
+echo "Installation started at: $(date '+%Y-%m-%d %H:%M:%S')"
+
 PROJECT_ROOT="/opt/peeppips-workbench"
 REPO_URL="https://github.com/wamaithaNyamu/selfhosted.workbench.peeppips.com.git"
 
@@ -246,7 +249,7 @@ chmod 0777 /var/lib/grafana
 docker container prune -f >/dev/null 2>&1 || true
 docker image prune -f >/dev/null 2>&1 || true
 
-echo "[6.5/7] Pulling required base images..."
+echo "[6.5/7] Pulling required base images... (Started at $(date '+%Y-%m-%d %H:%M:%S'))"
 IMAGES=(
   "golang:1.25"
   "golang:1.25-alpine"
@@ -266,7 +269,11 @@ IMAGES=(
   "node:22-alpine"
 )
 for img in "${IMAGES[@]}"; do
+  echo "Pulling $img..."
+  IMG_START=$SECONDS
   docker pull "$img" >/dev/null 2>&1 || true
+  IMG_TIME=$((SECONDS - IMG_START))
+  echo "  └─ Took ${IMG_TIME}s"
 done
 
 echo "[6.9/7] Building unified compose command..."
@@ -286,7 +293,7 @@ echo "Stopping any conflicting containers..."
 $COMPOSE_CMD down --remove-orphans || true
 
 echo "[7/8] Pulling images safely to avoid network saturation..."
-export COMPOSE_PARALLEL_LIMIT=1
+export COMPOSE_PARALLEL_LIMIT=3
 MAX_RETRIES=3
 RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
@@ -321,7 +328,12 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     fi
 done
 
+TOTAL_TIME=$((SECONDS - SCRIPT_START))
+TOTAL_MINS=$((TOTAL_TIME / 60))
+TOTAL_SECS=$((TOTAL_TIME % 60))
+
 echo "================================================================"
 echo " Installation completed successfully!                           "
+echo " Total time taken: ${TOTAL_MINS}m ${TOTAL_SECS}s              "
 echo " Your workbench is now running at https://$SUBDOMAIN            "
 echo "================================================================"

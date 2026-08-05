@@ -33,7 +33,7 @@ fi
 MAX_RETRIES=3
 
 echo "[3/5] Pulling latest images with retries..."
-export COMPOSE_PARALLEL_LIMIT=1
+export COMPOSE_PARALLEL_LIMIT=3
 RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     if $COMPOSE_CMD pull; then

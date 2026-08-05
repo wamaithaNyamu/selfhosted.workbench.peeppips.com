@@ -26,6 +26,20 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
+echo "Checking system requirements..."
+# Require at least 15GB of free space (15360 MB)
+AVAILABLE_SPACE_MB=$(df -m / | tail -1 | awk '{print $4}')
+REQUIRED_SPACE_MB=15360
+
+if [ "$AVAILABLE_SPACE_MB" -lt "$REQUIRED_SPACE_MB" ]; then
+    echo "❌ Error: Insufficient disk space."
+    echo "You have $((AVAILABLE_SPACE_MB / 1024))GB available, but Peeppips AI Workbench requires at least 15GB of free space to download all models and containers."
+    echo "Please free up some space and try again."
+    exit 1
+else
+    echo "✅ Disk space check passed ($((AVAILABLE_SPACE_MB / 1024))GB available)."
+fi
+
 echo "[1/7] Installing prerequisites..."
 apt-get update -y -q >/dev/null 2>&1 || true
 apt-get install -y -q git curl openssl jq >/dev/null 2>&1 || true

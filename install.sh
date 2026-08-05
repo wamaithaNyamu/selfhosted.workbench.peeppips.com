@@ -230,46 +230,24 @@ for img in "${IMAGES[@]}"; do
   docker pull "$img" >/dev/null 2>&1 || true
 done
 
-echo "[6.9/7] Stopping any conflicting containers..."
+echo "[6.9/7] Building unified compose command..."
+COMPOSE_CMD="docker compose -f docker-compose.prod.yml"
 
 if [ -f docker-compose.temporal.yml ]; then
-    docker compose -f docker-compose.temporal.yml down --remove-orphans || true
+    COMPOSE_CMD="$COMPOSE_CMD -f docker-compose.temporal.yml"
 fi
 if [ -f docker-compose.ml.prod.yml ]; then
-    docker compose -f docker-compose.ml.prod.yml down --remove-orphans || true
+    COMPOSE_CMD="$COMPOSE_CMD -f docker-compose.ml.prod.yml"
 fi
 if [ -f docker-compose.logs.yml ]; then
-    docker compose -f docker-compose.otel.yml down --remove-orphans || true
-    docker compose -f docker-compose.tracing.yml down --remove-orphans || true
-    docker compose -f docker-compose.metrics.yml down --remove-orphans || true
-    docker compose -f docker-compose.logs.yml down --remove-orphans || true
-fi
-if [ -f docker-compose.prod.yml ]; then
-    docker compose -f docker-compose.prod.yml down --remove-orphans || true
+    COMPOSE_CMD="$COMPOSE_CMD -f docker-compose.logs.yml -f docker-compose.metrics.yml -f docker-compose.tracing.yml -f docker-compose.otel.yml"
 fi
 
-echo "[7/7] Starting infrastructure..."
+echo "Stopping any conflicting containers..."
+$COMPOSE_CMD down --remove-orphans || true
 
-# Optional/Advanced Stacks (Copied from ansible structure)
-if [ -f docker-compose.temporal.yml ]; then
-    docker compose -f docker-compose.temporal.yml up -d --remove-orphans
-fi
-
-if [ -f docker-compose.ml.prod.yml ]; then
-    docker compose -f docker-compose.ml.prod.yml up -d --remove-orphans
-fi
-
-if [ -f docker-compose.logs.yml ]; then
-    docker compose -f docker-compose.logs.yml up -d --remove-orphans
-    docker compose -f docker-compose.metrics.yml up -d --remove-orphans
-    docker compose -f docker-compose.tracing.yml up -d --remove-orphans
-    docker compose -f docker-compose.otel.yml up -d --remove-orphans
-fi
-
-# If using docker-compose.prod.yml from the ansible format
-if [ -f docker-compose.prod.yml ]; then
-    docker compose -f docker-compose.prod.yml up -d --pull always --remove-orphans
-fi
+echo "[7/7] Starting infrastructure in dependency-aware order..."
+$COMPOSE_CMD up -d --pull always --remove-orphans
 
 echo "================================================================"
 echo " Installation completed successfully!                           "

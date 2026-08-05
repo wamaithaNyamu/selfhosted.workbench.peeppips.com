@@ -16,41 +16,23 @@ fi
 echo "[1/4] Pulling latest compose files..."
 git pull origin main || echo "Git pull failed, continuing with current compose files..."
 
-# 2. Pull the latest images for all enabled stacks
-echo "[2/4] Pulling latest Docker images from ghcr.io..."
+# 2. Pull the latest images and restart stacks
+echo "[2/4] Building unified compose command..."
+COMPOSE_CMD="docker compose -f docker-compose.prod.yml"
+
 if [ -f docker-compose.temporal.yml ]; then
-    docker compose -f docker-compose.temporal.yml pull
+    COMPOSE_CMD="$COMPOSE_CMD -f docker-compose.temporal.yml"
 fi
 if [ -f docker-compose.ml.prod.yml ]; then
-    docker compose -f docker-compose.ml.prod.yml pull
+    COMPOSE_CMD="$COMPOSE_CMD -f docker-compose.ml.prod.yml"
 fi
 if [ -f docker-compose.logs.yml ]; then
-    docker compose -f docker-compose.logs.yml pull
-    docker compose -f docker-compose.metrics.yml pull
-    docker compose -f docker-compose.tracing.yml pull
-    docker compose -f docker-compose.otel.yml pull
-fi
-if [ -f docker-compose.prod.yml ]; then
-    docker compose -f docker-compose.prod.yml pull
+    COMPOSE_CMD="$COMPOSE_CMD -f docker-compose.logs.yml -f docker-compose.metrics.yml -f docker-compose.tracing.yml -f docker-compose.otel.yml"
 fi
 
-# 3. Restart enabled stacks (docker compose up -d automatically recreates changed containers)
-echo "[3/4] Restarting services with latest images..."
-if [ -f docker-compose.temporal.yml ]; then
-    docker compose -f docker-compose.temporal.yml up -d --remove-orphans
-fi
-if [ -f docker-compose.ml.prod.yml ]; then
-    docker compose -f docker-compose.ml.prod.yml up -d --remove-orphans
-fi
-if [ -f docker-compose.logs.yml ]; then
-    docker compose -f docker-compose.logs.yml up -d --remove-orphans
-    docker compose -f docker-compose.metrics.yml up -d --remove-orphans
-    docker compose -f docker-compose.tracing.yml up -d --remove-orphans
-    docker compose -f docker-compose.otel.yml up -d --remove-orphans
-fi
-if [ -f docker-compose.prod.yml ]; then
-    docker compose -f docker-compose.prod.yml up -d --remove-orphans
-fi
+echo "[3/4] Pulling and restarting services in dependency-aware order..."
+$COMPOSE_CMD pull
+$COMPOSE_CMD up -d --remove-orphans
 
 # 4. Cleanup old dangling images to save disk space
 echo "[4/4] Cleaning up old images..."

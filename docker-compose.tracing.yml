@@ -9,8 +9,7 @@ services:
       - "-config.file=/etc/tempo.yml"
     volumes:
       - ./observability/tempo.yml:/etc/tempo.yml
-    ports:
-      - "3200:3200"
+
     networks:
       - workbench-net
 networks:

@@ -17,8 +17,7 @@ services:
       TEMPORAL_CORS_ORIGINS: ${TEMPORAL_CORS_ORIGINS}      
       DEFAULT_NAMESPACE: ${TEMPORAL_DEFAULT_NAMESPACE:-default}
       DEFAULT_NAMESPACE_RETENTION: ${TEMPORAL_DEFAULT_NAMESPACE_RETENTION:-30d}
-    ports:
-      - "7233:7233"
+
     volumes:
       - ./dynamicconfig:/etc/temporal/config/dynamicconfig
     networks:
@@ -51,8 +50,7 @@ services:
       TEMPORAL_CORS_ORIGINS: ${TEMPORAL_CORS_ORIGINS}
       TEMPORAL_CSRF_COOKIE_INSECURE: ${TEMPORAL_CSRF_COOKIE_INSECURE}
       
-    ports:
-      - "${TEMPORAL_UI_PORT:-8099}:8080"
+
     networks:
       - workbench-net
 

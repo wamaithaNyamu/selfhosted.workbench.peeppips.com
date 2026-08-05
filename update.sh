@@ -37,19 +37,19 @@ fi
 # 3. Restart enabled stacks (docker compose up -d automatically recreates changed containers)
 echo "[3/4] Restarting services with latest images..."
 if [ -f docker-compose.temporal.yml ]; then
-    docker compose -f docker-compose.temporal.yml up -d
+    docker compose -f docker-compose.temporal.yml up -d --remove-orphans
 fi
 if [ -f docker-compose.ml.prod.yml ]; then
-    docker compose -f docker-compose.ml.prod.yml up -d
+    docker compose -f docker-compose.ml.prod.yml up -d --remove-orphans
 fi
 if [ -f docker-compose.logs.yml ]; then
-    docker compose -f docker-compose.logs.yml up -d
-    docker compose -f docker-compose.metrics.yml up -d
-    docker compose -f docker-compose.tracing.yml up -d
-    docker compose -f docker-compose.otel.yml up -d
+    docker compose -f docker-compose.logs.yml up -d --remove-orphans
+    docker compose -f docker-compose.metrics.yml up -d --remove-orphans
+    docker compose -f docker-compose.tracing.yml up -d --remove-orphans
+    docker compose -f docker-compose.otel.yml up -d --remove-orphans
 fi
 if [ -f docker-compose.prod.yml ]; then
-    docker compose -f docker-compose.prod.yml up -d
+    docker compose -f docker-compose.prod.yml up -d --remove-orphans
 fi
 
 # 4. Cleanup old dangling images to save disk space

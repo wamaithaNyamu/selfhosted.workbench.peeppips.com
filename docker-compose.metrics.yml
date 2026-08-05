@@ -12,8 +12,7 @@ services:
       - --enable-feature=exemplar-storage
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.time=30d
-    ports:
-      - "9091:9090"
+
     volumes:
       - prometheus_data:/prometheus
       - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml
@@ -24,8 +23,7 @@ services:
     image: prom/node-exporter
     container_name: workbench-node-exporter
     restart: unless-stopped
-    ports:
-      - "9100:9100"
+
     command:
       - '--path.rootfs=/host'
     volumes:

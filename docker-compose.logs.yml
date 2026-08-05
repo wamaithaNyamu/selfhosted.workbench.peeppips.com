@@ -7,8 +7,7 @@ services:
     user: root
     restart: unless-stopped
     command: -config.file=/etc/loki/local-config.yaml
-    ports:
-      - "3100:3100"
+
     networks:
       - workbench-net
 
@@ -31,8 +30,7 @@ services:
     container_name: workbench-grafana
     user: root
     restart: unless-stopped
-    ports:
-      - "3001:3000"
+
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}

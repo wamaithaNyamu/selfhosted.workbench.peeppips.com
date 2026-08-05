@@ -11,9 +11,7 @@ services:
     volumes:
       - ./observability/otel-collector.yml:/etc/otel-collector.yml
 
-    ports:
-      - "4317:4317"
-      - "4318:4318"
+
 
     networks:
       - workbench-net

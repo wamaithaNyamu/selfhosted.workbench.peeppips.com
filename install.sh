@@ -161,9 +161,10 @@ else
 
     # Ensure LICENSE_PUBLIC_KEY
     if ! grep -q "^LICENSE_PUBLIC_KEY=" .env; then
-        echo "LICENSE_PUBLIC_KEY=${PUBLIC_KEY}" >> .env
+        echo "LICENSE_PUBLIC_KEY=\"${PUBLIC_KEY}\"" >> .env
     else
-        sed -i "s|^LICENSE_PUBLIC_KEY=.*|LICENSE_PUBLIC_KEY=${PUBLIC_KEY}|" .env
+        # We must use perl instead of sed because PUBLIC_KEY contains newlines
+        perl -0777 -pi -e "s/^LICENSE_PUBLIC_KEY=.*?(?=^([A-Z_]+=|\\z))/LICENSE_PUBLIC_KEY=\"${PUBLIC_KEY}\"\\n/ms" .env
     fi
 
     # Ensure TUNNEL_TOKEN

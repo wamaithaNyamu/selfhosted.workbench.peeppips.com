@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: ghcr.io/${GHCR_USERNAME}/postgres:${IMAGE_TAG}
+    image: ghcr.io/${GHCR_USERNAME}/postgres${IMAGE_SUFFIX:-}:${IMAGE_TAG}
     restart: unless-stopped
     command: postgres -c listen_addresses='*' -c max_locks_per_transaction=1024
     environment:
@@ -24,7 +24,7 @@ services:
       - workbench-net
 
   migrate:
-    image: ghcr.io/${GHCR_USERNAME}/migrate:${IMAGE_TAG}
+    image: ghcr.io/${GHCR_USERNAME}/migrate${IMAGE_SUFFIX:-}:${IMAGE_TAG}
     restart: "no"
     env_file:
       - .env
@@ -35,7 +35,7 @@ services:
       - workbench-net
 
   mt5-ingest:
-    image: ghcr.io/${GHCR_USERNAME}/mt5-ingest:${IMAGE_TAG}
+    image: ghcr.io/${GHCR_USERNAME}/mt5-ingest${IMAGE_SUFFIX:-}:${IMAGE_TAG}
     restart: unless-stopped
     env_file:
       - .env
@@ -46,7 +46,7 @@ services:
       - workbench-net
 
   deriv-datasource:
-    image: ghcr.io/${GHCR_USERNAME}/deriv-datasource:${IMAGE_TAG}
+    image: ghcr.io/${GHCR_USERNAME}/deriv-datasource${IMAGE_SUFFIX:-}:${IMAGE_TAG}
     restart: unless-stopped
     env_file:
       - .env
@@ -57,7 +57,7 @@ services:
       - workbench-net
 
   go-temporal-worker:
-    image: ghcr.io/${GHCR_USERNAME}/go-temporal-workers:${IMAGE_TAG}
+    image: ghcr.io/${GHCR_USERNAME}/go-temporal-workers${IMAGE_SUFFIX:-}:${IMAGE_TAG}
     container_name: workbench-go-temporal-worker
     restart: unless-stopped
     command: ["/usr/local/bin/worker"]
@@ -71,7 +71,7 @@ services:
       MT5_DOCKER_HOST_WINE_ROOT: /var/lib/workbench/wine
       MT5_WORKER_DATA_ROOT: /mt5
       MT5_WORKER_WINE_ROOT: /wine
-      MT5_PYTHON_IMAGE: ghcr.io/${GHCR_USERNAME}/mt5-python-runner:${IMAGE_TAG}
+      MT5_PYTHON_IMAGE: ghcr.io/${GHCR_USERNAME}/mt5-python-runner${IMAGE_SUFFIX:-}:${IMAGE_TAG}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /home/devuser/backend.workbench.client:/mt5
@@ -80,7 +80,7 @@ services:
       - workbench-net
 
   go-temporal-api-gateway:
-    image: ghcr.io/${GHCR_USERNAME}/go-temporal-workers:${IMAGE_TAG}
+    image: ghcr.io/${GHCR_USERNAME}/go-temporal-workers${IMAGE_SUFFIX:-}:${IMAGE_TAG}
     container_name: workbench-go-temporal-api-gateway
     restart: unless-stopped
     command: ["/usr/local/bin/api-gateway"]
@@ -95,7 +95,7 @@ services:
       - workbench-net
 
   python-temporal-worker:
-    image: ghcr.io/${GHCR_USERNAME}/python-temporal-workers:${IMAGE_TAG}
+    image: ghcr.io/${GHCR_USERNAME}/python-temporal-workers${IMAGE_SUFFIX:-}:${IMAGE_TAG}
     container_name: workbench-python-temporal-worker
     restart: unless-stopped
     command: ["python", "/app/run_worker.py"]
@@ -111,7 +111,7 @@ services:
       - workbench-net
 
   python-api-gateway:
-    image: ghcr.io/${GHCR_USERNAME}/python-temporal-workers:${IMAGE_TAG}
+    image: ghcr.io/${GHCR_USERNAME}/python-temporal-workers${IMAGE_SUFFIX:-}:${IMAGE_TAG}
     container_name: workbench-python-api-gateway
     restart: unless-stopped
     env_file:
@@ -126,7 +126,7 @@ services:
       - workbench-net
 
   strategy-runner:
-    image: ghcr.io/${GHCR_USERNAME}/strategy-runner:${IMAGE_TAG}
+    image: ghcr.io/${GHCR_USERNAME}/strategy-runner${IMAGE_SUFFIX:-}:${IMAGE_TAG}
     container_name: workbench-strategy-runner
     restart: unless-stopped
     env_file:
@@ -135,7 +135,7 @@ services:
       - workbench-net
 
   mt5-api:
-    image: ghcr.io/${GHCR_USERNAME}/mt5-python-runner:${IMAGE_TAG}
+    image: ghcr.io/${GHCR_USERNAME}/mt5-python-runner${IMAGE_SUFFIX:-}:${IMAGE_TAG}
     restart: unless-stopped
     env_file:
       - .env
@@ -147,7 +147,7 @@ services:
       - workbench-net
 
   server:
-    image: ghcr.io/${GHCR_USERNAME}/server:${IMAGE_TAG}
+    image: ghcr.io/${GHCR_USERNAME}/server${IMAGE_SUFFIX:-}:${IMAGE_TAG}
     restart: unless-stopped
     env_file:
       - .env
@@ -169,7 +169,7 @@ services:
       - workbench-net
 
   frontend:
-    image: ghcr.io/${GHCR_USERNAME}/frontend:${IMAGE_TAG}
+    image: ghcr.io/${GHCR_USERNAME}/frontend${IMAGE_SUFFIX:-}:${IMAGE_TAG}
     container_name: workbench-nextjs
     restart: unless-stopped
     expose:

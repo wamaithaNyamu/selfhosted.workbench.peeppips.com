@@ -241,7 +241,7 @@ if [ -f docker-compose.prod.yml ]; then
     docker compose -f docker-compose.prod.yml up -d --pull always
 fi
 
-echo "================================================="
-echo " Installation completed successfully!            "
-echo " Your workbench is now running at $PROJECT_ROOT  "
-echo "================================================="
+echo "================================================================"
+echo " Installation completed successfully!                           "
+echo " Your workbench is now running at https://$SUBDOMAIN            "
+echo "================================================================"

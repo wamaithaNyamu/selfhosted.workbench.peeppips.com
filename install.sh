@@ -57,6 +57,16 @@ if [ -z "$PUBLIC_KEY" ] || [ "$PUBLIC_KEY" = "null" ]; then
     exit 1
 fi
 
+echo "[2.6/7] Fetching Latest Stable Version..."
+LATEST_VERSION_RESP=$(curl -s "https://license.peeppips.com/latest-version?key=$LICENSE_KEY")
+LATEST_VERSION=$(echo "$LATEST_VERSION_RESP" | jq -r '.latest_version')
+if [ -z "$LATEST_VERSION" ] || [ "$LATEST_VERSION" = "null" ]; then
+    echo "⚠️ Warning: Could not fetch latest version from licensing server. Defaulting to 'latest'."
+    LATEST_VERSION="latest"
+else
+    echo "✅ Target version dynamically set to: $LATEST_VERSION"
+fi
+
 echo "[3/7] Checking and installing Docker..."
 if ! command -v docker >/dev/null 2>&1; then
     echo "Docker not found. Installing..."
@@ -114,7 +124,7 @@ CREDENTIALS_ENCRYPTION_KEY=${CRED_ENC_KEY}
 INTERNAL_SERVICE_API_KEY=${INTERNAL_API_KEY}
 ADMIN_EMAIL=${ADMIN_EMAIL}
 GHCR_USERNAME=wamaithanyamu
-IMAGE_TAG=latest
+IMAGE_TAG=${LATEST_VERSION}
 NODE_ENV=production
 NEXT_TELEMETRY_DISABLED="1"
 INTERNAL_API_URL=http://caddy-waf:18081/api
@@ -176,9 +186,11 @@ else
     fi
 
    
-    # Ensure IMAGE_TAG defaults to latest
+    # Ensure IMAGE_TAG is set to the latest version
     if ! grep -q "^IMAGE_TAG=" .env; then
-        echo "IMAGE_TAG=latest" >> .env
+        echo "IMAGE_TAG=${LATEST_VERSION}" >> .env
+    else
+        sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${LATEST_VERSION}/" .env
     fi
 fi
 

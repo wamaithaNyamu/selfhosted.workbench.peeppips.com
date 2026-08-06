@@ -36,7 +36,8 @@ echo "[3/5] Pulling latest images with retries..."
 export COMPOSE_PARALLEL_LIMIT=3
 RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if $COMPOSE_CMD pull; then
+    echo "Pulling compose services (this may take a minute, please wait)..."
+    if $COMPOSE_CMD pull -q; then
         echo "Images pulled successfully!"
         break
     else

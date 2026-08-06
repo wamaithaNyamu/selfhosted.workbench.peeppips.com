@@ -61,7 +61,21 @@ apt-get update -y -q >/dev/null 2>&1 || true
 apt-get install -y -q git curl openssl jq >/dev/null 2>&1 || true
 
 echo "[2/7] Verifying License Key..."
-LICENSE_RESPONSE=$(curl -sSL -w "%{http_code}" -o /tmp/license_payload.json "https://license.peeppips.com/licenses/verify?key=$LICENSE_KEY")
+
+ACTUAL_JWT="$LICENSE_KEY"
+if [[ "$LICENSE_KEY" == peep_* ]]; then
+    echo "Short token detected. Fetching offline JWT from central server..."
+    FETCH_RESPONSE=$(curl -sSL -w "%{http_code}" -o /tmp/fetch_payload.json "https://license.peeppips.com/licenses/fetch?token=$LICENSE_KEY")
+    if [ "$FETCH_RESPONSE" != "200" ]; then
+        echo "❌ Error: Invalid or expired short token."
+        rm -f /tmp/fetch_payload.json
+        exit 1
+    fi
+    ACTUAL_JWT=$(jq -r '.jwt_license' /tmp/fetch_payload.json)
+    rm -f /tmp/fetch_payload.json
+fi
+
+LICENSE_RESPONSE=$(curl -sSL -w "%{http_code}" -o /tmp/license_payload.json -H "Authorization: Bearer $ACTUAL_JWT" "https://license.peeppips.com/licenses/verify")
 
 if [ "$LICENSE_RESPONSE" != "200" ]; then
     echo "❌ Error: Invalid, expired, or deactivated license key."
@@ -88,7 +102,7 @@ if [ -z "$PUBLIC_KEY" ] || [ "$PUBLIC_KEY" = "null" ]; then
 fi
 
 echo "[2.6/7] Fetching Latest Stable Version..."
-LATEST_VERSION_RESP=$(curl -s "https://license.peeppips.com/latest-version?key=$LICENSE_KEY")
+LATEST_VERSION_RESP=$(curl -s -H "Authorization: Bearer $ACTUAL_JWT" "https://license.peeppips.com/latest-version")
 LATEST_VERSION=$(echo "$LATEST_VERSION_RESP" | jq -r '.latest_version')
 if [ -z "$LATEST_VERSION" ] || [ "$LATEST_VERSION" = "null" ]; then
     echo "⚠️ Warning: Could not fetch latest version from licensing server. Defaulting to 'latest'."
@@ -297,7 +311,8 @@ export COMPOSE_PARALLEL_LIMIT=3
 MAX_RETRIES=3
 RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if $COMPOSE_CMD pull; then
+    echo "Pulling compose services (this may take a minute, please wait)..."
+    if $COMPOSE_CMD pull -q; then
         echo "Images pulled successfully!"
         break
     else

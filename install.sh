@@ -141,6 +141,7 @@ else
 fi
 
 cd "$PROJECT_ROOT"
+chmod +x update.sh uninstall.sh || true
 
 echo "[5/7] Setting up Environment Variables..."
 if [ ! -f .env ]; then

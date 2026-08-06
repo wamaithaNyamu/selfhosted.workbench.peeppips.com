@@ -357,14 +357,14 @@ else
     exit 1
 fi
 
-echo "🔄 Enabling and restarting cron service to apply changes..."
+echo "🔄 Enabling and restarting cron daemon to apply changes..."
 systemctl enable cron || systemctl enable crond || true
 systemctl restart cron || systemctl restart crond || true
 
 if systemctl is-active --quiet cron || systemctl is-active --quiet crond; then
-    echo "✅ Cron service is active and running."
+    echo "✅ Cron daemon is active and running."
 else
-    echo "⚠️ Warning: Cron service does not appear to be running. Auto-updates may not trigger automatically."
+    echo "⚠️ Warning: Cron daemon does not appear to be running. Auto-updates may not trigger automatically."
 fi
 
 TOTAL_TIME=$((SECONDS - SCRIPT_START))

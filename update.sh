@@ -7,6 +7,23 @@ echo "🔄 Starting Workbench Update Process..."
 
 TARGET_VERSION=$1
 if [ -n "$TARGET_VERSION" ]; then
+    # Check currently running Docker images for all custom containers
+    if command -v docker >/dev/null 2>&1 && [ -f .env ]; then
+        GHCR_USERNAME=$(grep "^GHCR_USERNAME=" .env | cut -d '=' -f2-)
+        if [ -n "$GHCR_USERNAME" ]; then
+            # Extracts the tags of all running containers under our custom ghcr.io namespace
+            RUNNING_TAGS=$(docker ps --format "{{.Image}}" | grep "ghcr.io/$GHCR_USERNAME/" | awk -F':' '{print $2}' | sort | uniq)
+            
+            # If the only tag running across all custom containers is the target version, we're good
+            if [ "$RUNNING_TAGS" == "$TARGET_VERSION" ]; then
+                echo "✅ All custom containers are already running version $TARGET_VERSION. No update needed."
+                # Ensure .env is still in sync just in case
+                sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=$TARGET_VERSION/" .env
+                exit 0
+            fi
+        fi
+    fi
+
     echo "🎯 Target version provided: $TARGET_VERSION. Updating .env..."
     # Support rollback/upgrades by setting the new IMAGE_TAG
     sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=$TARGET_VERSION/" .env

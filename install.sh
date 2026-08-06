@@ -343,6 +343,30 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     fi
 done
 
+echo "[9/9] Setting up Auto-Updater Cron Job..."
+cat << 'EOF' > /etc/cron.d/peeppips_updater
+* * * * * root if [ -f /opt/peeppips-workbench/update_requested ]; then TARGET_VERSION=$(cat /opt/peeppips-workbench/update_requested); rm /opt/peeppips-workbench/update_requested && cd /opt/peeppips-workbench && ./update.sh $TARGET_VERSION >> /var/log/peeppips-update.log 2>&1; fi
+EOF
+chmod 0644 /etc/cron.d/peeppips_updater
+
+# Verify the cron file was created
+if [ -f /etc/cron.d/peeppips_updater ]; then
+    echo "✅ Cron job file created successfully."
+else
+    echo "❌ Error: Failed to create cron job file."
+    exit 1
+fi
+
+echo "🔄 Enabling and restarting cron service to apply changes..."
+systemctl enable cron || systemctl enable crond || true
+systemctl restart cron || systemctl restart crond || true
+
+if systemctl is-active --quiet cron || systemctl is-active --quiet crond; then
+    echo "✅ Cron service is active and running."
+else
+    echo "⚠️ Warning: Cron service does not appear to be running. Auto-updates may not trigger automatically."
+fi
+
 TOTAL_TIME=$((SECONDS - SCRIPT_START))
 TOTAL_MINS=$((TOTAL_TIME / 60))
 TOTAL_SECS=$((TOTAL_TIME % 60))

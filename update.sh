@@ -31,7 +31,7 @@ fi
 
 # 1. Update the selfhosted repository itself to get the latest compose files
 echo "[1/4] Pulling latest compose files..."
-git pull origin main || echo "Git pull failed, continuing with current compose files..."
+git fetch origin main && git reset --hard origin/main || echo "Git pull failed, continuing with current compose files..."
 
 # 2. Pull the latest images and restart stacks
 echo "[2/4] Building unified compose command..."
@@ -71,7 +71,7 @@ done
 echo "[4/5] Restarting services in dependency-aware order..."
 RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if $COMPOSE_CMD up -d --remove-orphans; then
+    if $COMPOSE_CMD up -d --force-recreate --remove-orphans; then
         echo "Services restarted successfully!"
         break
     else

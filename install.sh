@@ -56,7 +56,7 @@ else
     echo "✅ RAM check passed ($((TOTAL_RAM_MB / 1024))GB total)."
 fi
 
-echo "[1/7] Installing prerequisites..."
+echo "[1/7] Installing prerequisbbbbbbbnites..."
 apt-get update -y -q >/dev/null 2>&1 || true
 apt-get install -y -q git curl openssl jq >/dev/null 2>&1 || true
 

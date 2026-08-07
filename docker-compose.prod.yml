@@ -58,7 +58,6 @@ services:
 
   go-temporal-worker:
     image: ghcr.io/${GHCR_USERNAME}/go-temporal-workers${IMAGE_SUFFIX:-}:${IMAGE_TAG}
-    container_name: workbench-go-temporal-worker
     restart: unless-stopped
     command: ["/usr/local/bin/worker"]
     env_file:
@@ -96,7 +95,6 @@ services:
 
   python-temporal-worker:
     image: ghcr.io/${GHCR_USERNAME}/python-temporal-workers${IMAGE_SUFFIX:-}:${IMAGE_TAG}
-    container_name: workbench-python-temporal-worker
     restart: unless-stopped
     command: ["python", "/app/run_worker.py"]
     env_file:

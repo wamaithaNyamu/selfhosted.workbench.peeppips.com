@@ -3,10 +3,40 @@
 # Peeppips Workbench Selfhosted Update Script
 # This script pulls the latest images and seamlessly restarts enabled services.
 
+
+set -e
+
+PROJECT_ROOT="/opt/peeppips-workbench"
+cd "$PROJECT_ROOT"
+
+echo "================================================="
+echo "   Peeppips AI Workbench - Update         "
+echo "================================================="
+
+
+# --- SELF-UPDATE MECHANISM ---
+# If this variable isn't set, it means this is the first pass.
+if [ "$SELF_UPDATED" != "1" ]; then
+    echo "🔄 Fetching latest deployment scripts..."
+    git fetch origin main -q && git reset --hard origin/main -q
+    
+    # Set the flag so it doesn't infinite-loop
+    export SELF_UPDATED="1"
+    
+    # Re-execute this exact script with the new code, passing along any arguments (like $1)
+    exec "$0" "$@"
+fi
+
 echo "🔄 Starting Workbench Update Process..."
 
-TARGET_VERSION=$1
+TARGET_VERSION="$1"
 if [ -n "$TARGET_VERSION" ]; then
+    # STRICT INPUT VALIDATION: Ensure TARGET_VERSION only contains safe characters
+    if [[ ! "$TARGET_VERSION" =~ ^[a-zA-Z0-9_.-]+$ ]]; then
+        echo "❌ Error: Invalid target version format. Only alphanumeric characters, dots, dashes, and underscores are allowed."
+        exit 1
+    fi
+
     # Check currently running Docker images for all custom containers
     if command -v docker >/dev/null 2>&1 && [ -f .env ]; then
         GHCR_USERNAME=$(grep "^GHCR_USERNAME=" .env | cut -d '=' -f2-)
@@ -18,15 +48,21 @@ if [ -n "$TARGET_VERSION" ]; then
             if [ "$RUNNING_TAGS" == "$TARGET_VERSION" ]; then
                 echo "✅ All custom containers are already running version $TARGET_VERSION. No update needed."
                 # Ensure .env is still in sync just in case
-                sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=$TARGET_VERSION/" .env
+                grep -v "^IMAGE_TAG=" .env > .env.tmp || true
+                echo "IMAGE_TAG=${TARGET_VERSION}" >> .env.tmp
+                mv .env.tmp .env
+                chmod 0600 .env
                 exit 0
             fi
         fi
     fi
 
     echo "🎯 Target version provided: $TARGET_VERSION. Updating .env..."
-    # Support rollback/upgrades by setting the new IMAGE_TAG
-    sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=$TARGET_VERSION/" .env
+    # Support rollback/upgrades by safely setting the new IMAGE_TAG
+    grep -v "^IMAGE_TAG=" .env > .env.tmp || true
+    echo "IMAGE_TAG=${TARGET_VERSION}" >> .env.tmp
+    mv .env.tmp .env
+    chmod 0600 .env
 fi
 
 # 1. Update the selfhosted repository itself to get the latest compose files

@@ -341,6 +341,26 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
         break
     else
         RETRY_COUNT=$((RETRY_COUNT+1))
+
+        # Detect Postgres corruption or crash loop
+        if docker ps -a --filter "name=^/?backendworkbenchclient-postgres-1$" --format '{{.Status}}' | grep -q -i "unhealthy\|exited"; then
+            echo "⚠️ Detected unhealthy or crashed PostgreSQL container (backendworkbenchclient-postgres-1)."
+            echo "This usually happens if a previous installation or startup was abruptly interrupted."
+            read -p "Would you like to backup and wipe the corrupted database volume to start fresh? (y/N) " -n 1 -r
+            echo ""
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                echo "Stopping containers..."
+                $COMPOSE_CMD down >/dev/null 2>&1 || true
+                
+                BACKUP_NAME="postgres_corrupted_backup_$(date +%Y%m%d_%H%M%S).tar.gz"
+                echo "Backing up volume to $BACKUP_NAME..."
+                docker run --rm -v backendworkbenchclient_workbench_postgres_data:/data -v "$(pwd):/backup" alpine tar czf "/backup/$BACKUP_NAME" -C /data . >/dev/null 2>&1 || true
+                
+                echo "Wiping original postgres volume..."
+                docker volume rm backendworkbenchclient_workbench_postgres_data >/dev/null 2>&1 || true
+            fi
+        fi
+
         if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
             echo "❌ Failed to start infrastructure after $MAX_RETRIES attempts. Please check your network connection and try again."
             exit 1

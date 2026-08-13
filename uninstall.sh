@@ -97,6 +97,7 @@ else
 fi
 
 echo "[3/5] Removing project directories..."
+cd ~ || true
 rm -rf "$PROJECT_ROOT"
 rm -rf /var/lib/workbench
 rm -rf /var/lib/grafana

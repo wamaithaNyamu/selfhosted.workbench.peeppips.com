@@ -28,7 +28,7 @@ REPO_URL="https://github.com/wamaithaNyamu/selfhosted.workbench.peeppips.com.git
 if [ "$EUID" -ne 0 ]; then
   echo "Error: Please run this script as root or using sudo."
   echo "Example Usage:"
-  echo "  curl -O https://get.peeppips.org/install.sh"
+  echo "  curl -O -L https://get.peeppips.org/install.sh"
   echo "  chmod +x install.sh"
   echo "  sudo ./install.sh"
   echo "  (You will be prompted to enter your license key securely)"
@@ -63,7 +63,7 @@ else
     echo "✅ RAM check passed ($((TOTAL_RAM_MB / 1024))GB total)."
 fi
 
-echo "[1/7] Installing prerequisbbbbbbbnites..."
+echo "[1/7] Installing prerequisites..."
 apt-get update -y -q >/dev/null 2>&1 || true
 apt-get install -y -q git curl openssl jq >/dev/null 2>&1 || true
 

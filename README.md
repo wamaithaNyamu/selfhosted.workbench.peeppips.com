@@ -14,13 +14,15 @@ This repository contains the deployment scripts and Docker Compose configuration
 
 ---
 
-## ⚡ One-Command Installation (Recommended)
+## ⚡ Streamlined Installation (Recommended)
 
 To install or upgrade your Workbench, you only need to run a single command on your Linux server. 
 
 ```bash
-curl -sSL https://get.peeppips.org | sudo bash -s "YOUR_LICENSE_KEY_HERE"
+curl -O [https://get.peeppips.org/install.sh](https://get.peeppips.org/install.sh) && sudo bash install.sh
 ```
+
+*The script will securely prompt you to paste your License Key during the installation process so that it is never exposed to the system logs.*
 
 **What this script does securely behind the scenes:**
 1. Verifies your license cryptographically with our central server.
@@ -38,28 +40,31 @@ curl -sSL https://get.peeppips.org | sudo bash -s "YOUR_LICENSE_KEY_HERE"
 If you prefer to inspect the configuration and install manually, you can clone this repository:
 
 ```bash
-git clone https://github.com/wamaithaNyamu/selfhosted.workbench.peeppips.com.git /opt/peeppips-workbench
+git clone [https://github.com/wamaithaNyamu/selfhosted.workbench.peeppips.com.git](https://github.com/wamaithaNyamu/selfhosted.workbench.peeppips.com.git) /opt/peeppips-workbench
 cd /opt/peeppips-workbench
 ```
 
-You can run the installation script locally:
+You can then run the installation script locally. It will prompt you securely for your license key:
 ```bash
-sudo ./install.sh "YOUR_LICENSE_KEY_HERE"
+sudo ./install.sh
 ```
 
 ---
 
 ## 🔄 Updating Your Workbench
 
-Updating your Workbench to the latest production release is entirely frictionless. You have two options:
+Updating your Workbench to the latest production release is entirely frictionless. You have three options:
 
-### Option 1: Re-run the install script (Easiest)
-Simply re-run your original install command. The script will detect your existing `.env` file, safely preserve all your databases and passwords, pull the latest images, and reboot your containers.
+### Option 1: 1-Click Update (Recommended)
+You can seamlessly update your Workbench by clicking the **Update** button directly within the Workbench frontend UI. This will automatically pull the latest images and restart your services.
+
+### Option 2: Re-run the install script
+Simply re-run your original install command. The script will detect your existing `.env` file, safely preserve all your databases and passwords, prompt for your key (if not already saved in the `.env`), pull the latest images, and reboot your containers.
 ```bash
-curl -sSL https://get.peeppips.org | sudo bash -s "YOUR_LICENSE_KEY_HERE"
+curl -O [https://get.peeppips.org/install.sh](https://get.peeppips.org/install.sh) && sudo bash install.sh
 ```
 
-### Option 2: Pure Docker Pull
+### Option 3: Pure Docker Pull
 If you want to manually update via Docker:
 ```bash
 cd /opt/peeppips-workbench

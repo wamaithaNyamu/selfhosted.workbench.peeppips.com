@@ -7,10 +7,12 @@ if [ -n "$1" ]; then
 fi
 
 if [ -z "$LICENSE_KEY" ]; then
-  echo "Error: License key is required."
-  echo "Usage: curl -sSL https://get.peeppips.org | sudo bash -s -- <license_key>"
-  echo "Or:    curl -sSL https://get.peeppips.org | sudo LICENSE_KEY=<key> bash"
-  exit 1
+  read -s -p "Enter License Key: " LICENSE_KEY
+  echo ""
+  if [ -z "$LICENSE_KEY" ]; then
+    echo "Error: License key is required."
+    exit 1
+  fi
 fi
 
 echo "================================================="
@@ -25,7 +27,12 @@ REPO_URL="https://github.com/wamaithaNyamu/selfhosted.workbench.peeppips.com.git
 
 if [ "$EUID" -ne 0 ]; then
   echo "Error: Please run this script as root or using sudo."
-  echo "Example: curl -sSL https://get.peeppips.org | sudo bash -s -- <license_key>"
+  echo "Example Usage:"
+  echo "  curl -O https://get.peeppips.org/install.sh"
+  echo "  chmod +x install.sh"
+  echo "  sudo ./install.sh"
+  echo "  (You will be prompted to enter your license key securely)"
+
   exit 1
 fi
 
@@ -62,36 +69,38 @@ apt-get install -y -q git curl openssl jq >/dev/null 2>&1 || true
 
 echo "[2/7] Verifying License Key..."
 
+TMPDIR=$(mktemp -d -t peeppips-XXXXXXXX)
+chmod 0700 "$TMPDIR"
+
 ACTUAL_JWT="$LICENSE_KEY"
 if [[ "$LICENSE_KEY" == peep_* ]]; then
     echo "Short token detected. Fetching offline JWT from central server..."
-    FETCH_RESPONSE=$(curl -sSL -w "%{http_code}" -o /tmp/fetch_payload.json "https://license.peeppips.com/licenses/fetch?token=$LICENSE_KEY")
+    FETCH_RESPONSE=$(curl -sSL -w "%{http_code}" -o "$TMPDIR/fetch_payload.json" "https://license.peeppips.com/licenses/fetch?token=$LICENSE_KEY")
     if [ "$FETCH_RESPONSE" != "200" ]; then
         echo "❌ Error: Invalid or expired short token."
-        rm -f /tmp/fetch_payload.json
+        rm -rf "$TMPDIR"
         exit 1
     fi
-    ACTUAL_JWT=$(jq -r '.jwt_license' /tmp/fetch_payload.json)
-    rm -f /tmp/fetch_payload.json
+    ACTUAL_JWT=$(jq -r '.jwt_license' "$TMPDIR/fetch_payload.json")
 fi
 
-LICENSE_RESPONSE=$(curl -sSL -w "%{http_code}" -o /tmp/license_payload.json -H "Authorization: Bearer $ACTUAL_JWT" "https://license.peeppips.com/licenses/verify")
+LICENSE_RESPONSE=$(curl -sSL -w "%{http_code}" -o "$TMPDIR/license_payload.json" -H "Authorization: Bearer $ACTUAL_JWT" "https://license.peeppips.com/licenses/verify")
 
 if [ "$LICENSE_RESPONSE" != "200" ]; then
     echo "❌ Error: Invalid, expired, or deactivated license key."
     echo "Please check your key or visit peeppips.com to renew."
-    rm -f /tmp/license_payload.json
+    rm -rf "$TMPDIR"
     exit 1
 fi
 
-TUNNEL_TOKEN=$(jq -r '.tunnel_token' /tmp/license_payload.json)
-PLAN=$(jq -r '.plan' /tmp/license_payload.json)
-MAX_ACCOUNTS=$(jq -r '.max_accounts' /tmp/license_payload.json)
-ADMIN_EMAIL=$(jq -r '.email' /tmp/license_payload.json)
-SUBDOMAIN=$(jq -r '.subdomain' /tmp/license_payload.json)
+TUNNEL_TOKEN=$(jq -r '.tunnel_token' "$TMPDIR/license_payload.json")
+PLAN=$(jq -r '.plan' "$TMPDIR/license_payload.json")
+MAX_ACCOUNTS=$(jq -r '.max_accounts' "$TMPDIR/license_payload.json")
+ADMIN_EMAIL=$(jq -r '.email' "$TMPDIR/license_payload.json")
+SUBDOMAIN=$(jq -r '.subdomain' "$TMPDIR/license_payload.json")
 
 echo "✅ License verified! Plan: $PLAN (Max Accounts: $MAX_ACCOUNTS, Admin: $ADMIN_EMAIL)"
-rm -f /tmp/license_payload.json
+rm -rf "$TMPDIR"
 
 echo "[2.5/7] Fetching Public Key..."
 PUBLIC_KEY_RESP=$(curl -s "https://license.peeppips.com/public-key")
@@ -111,10 +120,12 @@ else
     echo "✅ Target version dynamically set to: $LATEST_VERSION"
 fi
 
+
+
 echo "[3/7] Checking and installing Docker..."
 if ! command -v docker >/dev/null 2>&1; then
-    echo "Docker not found. Installing..."
-    curl -fsSL https://get.docker.com | sh >/dev/null 2>&1
+    echo "Docker not found. Installing via official script (this may take a moment)..."
+    curl -fL https://get.docker.com | sh
 else
     echo "Docker is already installed."
 fi
@@ -208,27 +219,20 @@ EOF
 else
     echo ".env already exists, ensuring licensing and encryption keys are set..."
     
-    # Ensure LICENSE_KEY
-    if ! grep -q "^LICENSE_KEY=" .env; then
-        echo "LICENSE_KEY=${LICENSE_KEY}" >> .env
-    else
-        sed -i "s/^LICENSE_KEY=.*/LICENSE_KEY=${LICENSE_KEY}/" .env
-    fi
+    # Ensure LICENSE_KEY safely
+    grep -v "^LICENSE_KEY=" .env > .env.tmp || true
+    echo "LICENSE_KEY=${LICENSE_KEY}" >> .env.tmp
+    mv .env.tmp .env
 
-    # Ensure LICENSE_PUBLIC_KEY
-    if ! grep -q "^LICENSE_PUBLIC_KEY=" .env; then
-        echo "LICENSE_PUBLIC_KEY=\"${PUBLIC_KEY}\"" >> .env
-    else
-        # We must use perl instead of sed because PUBLIC_KEY contains newlines
-        perl -0777 -pi -e "s/^LICENSE_PUBLIC_KEY=.*?(?=^([A-Z_]+=|\\z))/LICENSE_PUBLIC_KEY=\"${PUBLIC_KEY}\"\\n/ms" .env
-    fi
+    # Ensure LICENSE_PUBLIC_KEY safely
+    grep -v "^LICENSE_PUBLIC_KEY=" .env > .env.tmp || true
+    echo "LICENSE_PUBLIC_KEY=\"${PUBLIC_KEY}\"" >> .env.tmp
+    mv .env.tmp .env
 
-    # Ensure TUNNEL_TOKEN
-    if ! grep -q "^TUNNEL_TOKEN=" .env; then
-        echo "TUNNEL_TOKEN=${TUNNEL_TOKEN}" >> .env
-    else
-        sed -i "s|^TUNNEL_TOKEN=.*|TUNNEL_TOKEN=${TUNNEL_TOKEN}|" .env
-    fi
+    # Ensure TUNNEL_TOKEN safely
+    grep -v "^TUNNEL_TOKEN=" .env > .env.tmp || true
+    echo "TUNNEL_TOKEN=${TUNNEL_TOKEN}" >> .env.tmp
+    mv .env.tmp .env
 
     # Ensure CREDENTIALS_ENCRYPTION_KEY
     if ! grep -q "^CREDENTIALS_ENCRYPTION_KEY=" .env; then
@@ -242,14 +246,13 @@ else
         echo "INTERNAL_SERVICE_API_KEY=${INTERNAL_API_KEY}" >> .env
     fi
 
-   
-    # Ensure IMAGE_TAG is set to the latest version
-    if ! grep -q "^IMAGE_TAG=" .env; then
-        echo "IMAGE_TAG=${LATEST_VERSION}" >> .env
-    else
-        sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${LATEST_VERSION}/" .env
-    fi
+    # Ensure IMAGE_TAG safely
+    grep -v "^IMAGE_TAG=" .env > .env.tmp || true
+    echo "IMAGE_TAG=${LATEST_VERSION}" >> .env.tmp
+    mv .env.tmp .env
 fi
+
+chmod 0600 .env
 
 echo "[6/7] Setting up Docker networks and volumes..."
 docker network create workbench-net 2>/dev/null || true
@@ -257,9 +260,12 @@ docker network create workbench-net 2>/dev/null || true
 mkdir -p /var/lib/workbench/mt5
 mkdir -p /var/lib/workbench/wine
 mkdir -p /var/lib/grafana
-chmod 0777 /var/lib/workbench/mt5
-chmod 0777 /var/lib/workbench/wine
-chmod 0777 /var/lib/grafana
+chown 1000:1000 /var/lib/workbench/mt5
+chown 1000:1000 /var/lib/workbench/wine
+chown 472:472 /var/lib/grafana
+chmod 0750 /var/lib/workbench/mt5
+chmod 0750 /var/lib/workbench/wine
+chmod 0750 /var/lib/grafana
 
 docker container prune -f >/dev/null 2>&1 || true
 docker image prune -f >/dev/null 2>&1 || true
@@ -346,7 +352,8 @@ done
 
 echo "[9/9] Setting up Auto-Updater Cron Job..."
 cat << 'EOF' > /etc/cron.d/peeppips_updater
-* * * * * root if [ -f /opt/peeppips-workbench/update_requested ]; then TARGET_VERSION=$(cat /opt/peeppips-workbench/update_requested); rm /opt/peeppips-workbench/update_requested && cd /opt/peeppips-workbench && ./update.sh $TARGET_VERSION >> /var/log/peeppips-update.log 2>&1; fi
+SHELL=/bin/bash
+* * * * * root if [ -f /opt/peeppips-workbench/update_requested ]; then TARGET_VERSION=$(cat /opt/peeppips-workbench/update_requested); if [[ "$TARGET_VERSION" =~ ^[a-zA-Z0-9_.-]+$ ]]; then rm -f /opt/peeppips-workbench/update_requested && cd /opt/peeppips-workbench && ./update.sh "$TARGET_VERSION" >> /var/log/peeppips-update.log 2>&1; fi; fi
 EOF
 chmod 0644 /etc/cron.d/peeppips_updater
 

@@ -136,7 +136,7 @@ done
 echo "[4/5] Restarting services in dependency-aware order..."
 RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if $COMPOSE_CMD up -d --force-recreate --remove-orphans; then
+    if $COMPOSE_CMD up -d --remove-orphans; then
         echo "Services restarted successfully!"
         break
     else

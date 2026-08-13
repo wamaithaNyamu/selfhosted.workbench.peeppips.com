@@ -63,6 +63,35 @@ docker container prune -f >/dev/null 2>&1 || true
 if [[ "$remove_deps" =~ ^[Yy]$ ]]; then
     docker image prune -a -f >/dev/null 2>&1 || true
 else
+    # Remove specifically pulled base images
+    echo "Removing specific base images used by Peeppips..."
+    IMAGES=(
+      "golang:1.25"
+      "golang:1.25-alpine"
+      "scottyhardy/docker-wine:latest"
+      "timescale/timescaledb:2.19.1-pg17"
+      "redis:7-alpine"
+      "temporalio/auto-setup:1.27.2"
+      "temporalio/ui:2.34.0"
+      "temporalio/admin-tools:1.27.2-tctl-1.18.2-cli-1.3.0"
+      "grafana/loki:3.2.1"
+      "grafana/promtail:3.2.1"
+      "grafana/grafana:11.2.2"
+      "prom/prometheus"
+      "prom/node-exporter"
+      "grafana/tempo:latest"
+      "otel/opentelemetry-collector-contrib:latest"
+      "node:22-alpine"
+      "alpine:latest"
+    )
+    for img in "${IMAGES[@]}"; do
+        docker rmi -f "$img" >/dev/null 2>&1 || true
+    done
+
+    # Remove dynamically built project images
+    docker rmi -f $(docker images --filter "reference=*backendworkbenchclient*" -q) >/dev/null 2>&1 || true
+    docker rmi -f $(docker images --filter "reference=*peeppips*" -q) >/dev/null 2>&1 || true
+
     # Only remove dangling images safely
     docker image prune -f >/dev/null 2>&1 || true
 fi

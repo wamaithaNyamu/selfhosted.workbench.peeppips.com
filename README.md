@@ -19,7 +19,7 @@ This repository contains the deployment scripts and Docker Compose configuration
 To install or upgrade your Workbench, you only need to run a single command on your Linux server. 
 
 ```bash
-curl -O [https://get.peeppips.org/install.sh](https://get.peeppips.org/install.sh) && sudo bash install.sh
+curl -sL https://get.peeppips.org/install.sh -o /tmp/install.sh && sudo bash /tmp/install.sh
 ```
 
 *The script will securely prompt you to paste your License Key during the installation process so that it is never exposed to the system logs.*
@@ -61,7 +61,7 @@ You can seamlessly update your Workbench by clicking the **Update** button direc
 ### Option 2: Re-run the install script
 Simply re-run your original install command. The script will detect your existing `.env` file, safely preserve all your databases and passwords, prompt for your key (if not already saved in the `.env`), pull the latest images, and reboot your containers.
 ```bash
-curl -O [https://get.peeppips.org/install.sh](https://get.peeppips.org/install.sh) && sudo bash install.sh
+curl -sL https://get.peeppips.org/install.sh -o /tmp/install.sh && sudo bash /tmp/install.sh
 ```
 
 ### Option 3: Pure Docker Pull

@@ -28,9 +28,8 @@ REPO_URL="https://github.com/wamaithaNyamu/selfhosted.workbench.peeppips.com.git
 if [ "$EUID" -ne 0 ]; then
   echo "Error: Please run this script as root or using sudo."
   echo "Example Usage:"
-  echo "  curl -O -L https://get.peeppips.org/install.sh"
-  echo "  chmod +x install.sh"
-  echo "  sudo ./install.sh"
+  echo "  curl -sL https://get.peeppips.org/install.sh -o /tmp/install.sh"
+  echo "  sudo bash /tmp/install.sh"
   echo "  (You will be prompted to enter your license key securely)"
 
   exit 1

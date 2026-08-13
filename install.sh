@@ -37,30 +37,41 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 echo "Checking system requirements..."
-# Require at least 15GB of free disk space (15360 MB)
+RESOURCE_WARNING=0
+
+# Recommend at least 100GB of free disk space (102400 MB)
 AVAILABLE_SPACE_MB=$(df -m / | tail -1 | awk '{print $4}')
-REQUIRED_SPACE_MB=15360
+REQUIRED_SPACE_MB=102400
 
 if [ "$AVAILABLE_SPACE_MB" -lt "$REQUIRED_SPACE_MB" ]; then
-    echo "❌ Error: Insufficient disk space."
-    echo "You have $((AVAILABLE_SPACE_MB / 1024))GB available, but Peeppips AI Workbench requires at least 15GB of free space to download all models and containers."
-    echo "Please free up some space and try again."
-    exit 1
+    echo "⚠️ Warning: Low disk space."
+    echo "You have $((AVAILABLE_SPACE_MB / 1024))GB available. We recommend at least 100GB for all models and containers."
+    RESOURCE_WARNING=1
 else
     echo "✅ Disk space check passed ($((AVAILABLE_SPACE_MB / 1024))GB available)."
 fi
 
-# Require at least 8GB of RAM (~7500 MB to account for OS overhead on 8GB VMs)
+# Recommend at least 8GB of RAM (~7500 MB to account for OS overhead on 8GB VMs)
 TOTAL_RAM_MB=$(free -m | awk '/^Mem:/{print $2}')
 REQUIRED_RAM_MB=7500
 
 if [ "$TOTAL_RAM_MB" -lt "$REQUIRED_RAM_MB" ]; then
-    echo "❌ Error: Insufficient RAM."
-    echo "You have $((TOTAL_RAM_MB / 1024))GB of RAM, but Peeppips AI Workbench requires at least 8GB of RAM to run all ML models and backend services reliably."
-    echo "Please upgrade your server and try again."
-    exit 1
+    echo "⚠️ Warning: Low RAM."
+    echo "You have $((TOTAL_RAM_MB / 1024))GB of RAM. We recommend at least 8GB to run all ML models and backend services reliably."
+    RESOURCE_WARNING=1
 else
     echo "✅ RAM check passed ($((TOTAL_RAM_MB / 1024))GB total)."
+fi
+
+if [ "$RESOURCE_WARNING" -eq 1 ]; then
+    echo ""
+    echo "🚨 IMPORTANT: Proceeding with limited resources will lead to poor and slow performance, and services may crash unexpectedly."
+    read -p "Do you want to proceed anyway? [y/N]: " proceed_resources
+    if [[ ! "$proceed_resources" =~ ^[Yy]$ ]]; then
+        echo "Installation aborted."
+        exit 1
+    fi
+    echo "Proceeding with limited resources..."
 fi
 
 echo "[1/7] Installing prerequisites..."

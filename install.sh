@@ -344,13 +344,32 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
 done
 
 echo "[8/8] Starting infrastructure in dependency-aware order..."
+INFRA_SERVICES="postgres redis"
+if [ -f docker-compose.temporal.yml ]; then
+    INFRA_SERVICES="$INFRA_SERVICES temporal"
+fi
+if [ -f docker-compose.ml.prod.yml ]; then
+    INFRA_SERVICES="$INFRA_SERVICES minio create-bucket mlflow"
+fi
+if [ -f docker-compose.logs.yml ]; then
+    INFRA_SERVICES="$INFRA_SERVICES tempo loki promtail prometheus node-exporter grafana otel-collector"
+fi
+
 RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if $COMPOSE_CMD up -d --remove-orphans; then
-        echo "Infrastructure started successfully!"
-        break
-    else
-        RETRY_COUNT=$((RETRY_COUNT+1))
+    echo "Booting base infrastructure services..."
+    if $COMPOSE_CMD up -d --remove-orphans $INFRA_SERVICES; then
+        echo "Base infrastructure started! Waiting 15 seconds for services to stabilize..."
+        sleep 15
+        
+        echo "Booting application services..."
+        if $COMPOSE_CMD up -d --remove-orphans; then
+            echo "All services started successfully!"
+            break
+        fi
+    fi
+
+    RETRY_COUNT=$((RETRY_COUNT+1))
 
         # Detect Postgres corruption or crash loop
         if docker ps -a --filter "name=^/?backendworkbenchclient-postgres-1$" --format '{{.Status}}' | grep -q -i "unhealthy\|exited"; then
@@ -377,7 +396,6 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
         fi
         echo "⚠️ Docker Compose failed to start. Retrying in 10 seconds... (Attempt $RETRY_COUNT of $MAX_RETRIES)"
         sleep 10
-    fi
 done
 
 echo "[9/9] Setting up Auto-Updater Cron Job..."

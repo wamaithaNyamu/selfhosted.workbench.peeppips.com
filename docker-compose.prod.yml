@@ -77,6 +77,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - /home/devuser/backend.workbench.client:/mt5
       - /var/lib/workbench/wine:/wine
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - workbench-net
 
@@ -92,6 +95,9 @@ services:
       TEMPORAL_PORT: 7233
       TEMPORAL_TASK_QUEUE: go-workers-task-queue
       TEMPORAL_GATEWAY_PORT: 8110
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - workbench-net
 
@@ -107,6 +113,9 @@ services:
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - workbench-net
 
@@ -122,6 +131,9 @@ services:
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - workbench-net
 
@@ -131,6 +143,9 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - workbench-net
 

@@ -19,7 +19,7 @@ if [ "$SELF_UPDATED" != "1" ] && [ -d "$PROJECT_ROOT/.git" ]; then
     git fetch origin main -q && git reset --hard origin/main -q
     
     export SELF_UPDATED="1"
-    exec "$0" "$@"
+    exec bash "$0" "$@"
 fi
 
 

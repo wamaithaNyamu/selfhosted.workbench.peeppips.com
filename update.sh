@@ -30,6 +30,35 @@ fi
 echo "🔄 Starting Workbench Update Process..."
 
 TARGET_VERSION="$1"
+
+if [ -z "$TARGET_VERSION" ]; then
+    echo "No target version provided. Fetching the latest stable version..."
+    if [ -f .env ]; then
+        LICENSE_KEY=$(grep "^LICENSE_KEY=" .env | cut -d '=' -f2- | tr -d '"')
+        if [ -n "$LICENSE_KEY" ]; then
+            ACTUAL_JWT="$LICENSE_KEY"
+            if [[ "$LICENSE_KEY" == peep_* ]]; then
+                # Handle short token
+                FETCH_RESPONSE=$(curl -sSL -w "%{http_code}" -o /tmp/fetch_payload.json "https://license.peeppips.com/licenses/fetch?token=$LICENSE_KEY")
+                if [ "$FETCH_RESPONSE" == "200" ]; then
+                    ACTUAL_JWT=$(jq -r '.jwt_license' /tmp/fetch_payload.json)
+                fi
+                rm -f /tmp/fetch_payload.json
+            fi
+            
+            LATEST_VERSION_RESP=$(curl -s -H "Authorization: Bearer $ACTUAL_JWT" "https://license.peeppips.com/latest-version")
+            LATEST_VERSION=$(echo "$LATEST_VERSION_RESP" | jq -r '.latest_version')
+            
+            if [ -n "$LATEST_VERSION" ] && [ "$LATEST_VERSION" != "null" ]; then
+                TARGET_VERSION="$LATEST_VERSION"
+                echo "✅ Target version dynamically set to: $TARGET_VERSION"
+            else
+                echo "⚠️ Warning: Could not fetch latest version from licensing server. Proceeding with current configuration."
+            fi
+        fi
+    fi
+fi
+
 if [ -n "$TARGET_VERSION" ]; then
     # STRICT INPUT VALIDATION: Ensure TARGET_VERSION only contains safe characters
     if [[ ! "$TARGET_VERSION" =~ ^[a-zA-Z0-9_.-]+$ ]]; then
@@ -125,4 +154,4 @@ done
 echo "[5/5] Cleaning up old images..."
 docker image prune -f >/dev/null 2>&1 || true
 
-echo "✅ Update complete! System is running the latest version."
+echo "✅ Update complete! System is running version ${TARGET_VERSION:-latest}."

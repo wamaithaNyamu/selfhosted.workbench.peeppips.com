@@ -155,3 +155,13 @@ echo "[5/5] Cleaning up old images..."
 docker image prune -f >/dev/null 2>&1 || true
 
 echo "✅ Update complete! System is running version ${TARGET_VERSION:-latest}."
+
+echo ""
+echo "Triggering initial background schedules..."
+sleep 5 # Give the Go worker a few seconds to register schedules
+docker exec workbench-temporal-admin-tools temporal schedule trigger --schedule-id sync-notifications >/dev/null 2>&1 || true
+docker exec workbench-temporal-admin-tools temporal schedule trigger --schedule-id sync-changelogs-daily >/dev/null 2>&1 || true
+docker exec workbench-temporal-admin-tools temporal schedule trigger --schedule-id system-uptime-daily >/dev/null 2>&1 || true
+docker exec workbench-temporal-admin-tools temporal schedule trigger --schedule-id storage-monitoring-schedule >/dev/null 2>&1 || true
+docker exec workbench-temporal-admin-tools temporal schedule trigger --schedule-id sync-openrouter-models-daily >/dev/null 2>&1 || true
+echo "✅ Background schedules triggered successfully!"

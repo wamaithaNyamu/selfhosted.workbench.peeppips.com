@@ -403,7 +403,7 @@ done
 echo "[9/9] Setting up Auto-Updater Cron Job..."
 cat << 'EOF' > /etc/cron.d/peeppips_updater
 SHELL=/bin/bash
-* * * * * root if [ -f /opt/peeppips-workbench/update_requested ]; then TARGET_VERSION=$(cat /opt/peeppips-workbench/update_requested); if [[ "$TARGET_VERSION" =~ ^[a-zA-Z0-9_.-]+$ ]]; then rm -f /opt/peeppips-workbench/update_requested && cd /opt/peeppips-workbench && ./update.sh "$TARGET_VERSION" >> /var/log/peeppips-update.log 2>&1; fi; fi
+* * * * * root if [ -f /opt/peeppips-workbench/update_requested ]; then TARGET_VERSION=$(cat /opt/peeppips-workbench/update_requested); if [[ "$TARGET_VERSION" =~ ^[a-zA-Z0-9_.-]+$ ]]; then rm -f /opt/peeppips-workbench/update_requested && cd /opt/peeppips-workbench && bash update.sh "$TARGET_VERSION" >> /var/log/peeppips-update.log 2>&1; fi; fi
 EOF
 chmod 0644 /etc/cron.d/peeppips_updater
 
@@ -424,6 +424,18 @@ if systemctl is-active --quiet cron || systemctl is-active --quiet crond; then
 else
     echo "⚠️ Warning: Cron daemon does not appear to be running. Auto-updates may not trigger automatically."
 fi
+
+echo ""
+echo "Triggering initial background schedules so your dashboard populates immediately..."
+sleep 5 # Give the Go worker a few seconds to register schedules
+docker exec workbench-temporal-admin-tools temporal schedule trigger --schedule-id sync-notifications >/dev/null 2>&1 || true
+docker exec workbench-temporal-admin-tools temporal schedule trigger --schedule-id sync-changelogs-daily >/dev/null 2>&1 || true
+docker exec workbench-temporal-admin-tools temporal schedule trigger --schedule-id system-uptime-daily >/dev/null 2>&1 || true
+docker exec workbench-temporal-admin-tools temporal schedule trigger --schedule-id storage-monitoring-schedule >/dev/null 2>&1 || true
+docker exec workbench-temporal-admin-tools temporal schedule trigger --schedule-id sync-openrouter-models-daily >/dev/null 2>&1 || true
+echo "✅ Background schedules triggered successfully!"
+
+
 
 TOTAL_TIME=$((SECONDS - SCRIPT_START))
 TOTAL_MINS=$((TOTAL_TIME / 60))

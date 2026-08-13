@@ -24,7 +24,7 @@ if [ "$SELF_UPDATED" != "1" ]; then
     export SELF_UPDATED="1"
     
     # Re-execute this exact script with the new code, passing along any arguments (like $1)
-    exec "$0" "$@"
+    exec bash "$0" "$@"
 fi
 
 echo "🔄 Starting Workbench Update Process..."

@@ -144,12 +144,15 @@ echo "Configuring Docker daemon to prevent network timeouts..."
 mkdir -p /etc/docker
 if [ ! -f /etc/docker/daemon.json ]; then
     echo '{"max-concurrent-downloads": 1}' > /etc/docker/daemon.json
+    systemctl daemon-reload || true
     systemctl restart docker || true
 elif ! grep -q "max-concurrent-downloads" /etc/docker/daemon.json; then
     jq '. + {"max-concurrent-downloads": 1}' /etc/docker/daemon.json > /tmp/daemon.json.tmp && mv /tmp/daemon.json.tmp /etc/docker/daemon.json
+    systemctl daemon-reload || true
     systemctl restart docker || true
 fi
 
+systemctl daemon-reload || true
 systemctl start docker || true
 systemctl enable docker || true
 
@@ -344,7 +347,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
 done
 
 echo "[8/8] Starting infrastructure in dependency-aware order..."
-INFRA_SERVICES="postgres redis"
+INFRA_SERVICES="postgres redis migrate"
 if [ -f docker-compose.temporal.yml ]; then
     INFRA_SERVICES="$INFRA_SERVICES temporal"
 fi
@@ -357,10 +360,9 @@ fi
 
 RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    echo "Booting base infrastructure services..."
-    if $COMPOSE_CMD up -d --remove-orphans $INFRA_SERVICES; then
-        echo "Base infrastructure started! Waiting 15 seconds for services to stabilize..."
-        sleep 15
+    echo "Booting base infrastructure services and waiting for healthchecks..."
+    if $COMPOSE_CMD up -d --wait --remove-orphans $INFRA_SERVICES; then
+        echo "Base infrastructure is officially healthy!"
         
         echo "Booting application services..."
         if $COMPOSE_CMD up -d --remove-orphans; then

@@ -16,6 +16,7 @@ PROJECT_ROOT="/opt/peeppips-workbench"
 if [ "$SELF_UPDATED" != "1" ] && [ -d "$PROJECT_ROOT/.git" ]; then
     cd "$PROJECT_ROOT"
     echo "🔄 Fetching latest uninstaller..."
+    git config --global --add safe.directory "$PROJECT_ROOT"
     git fetch origin main -q && git reset --hard origin/main -q
     
     export SELF_UPDATED="1"
